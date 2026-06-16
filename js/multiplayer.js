@@ -223,6 +223,11 @@ function handleGameStateUpdate(newState) {
     restartRequested = false;
     const restartBtn = document.getElementById('btn-restart');
     if (restartBtn) restartBtn.textContent = '再来一局';
+
+    // 双方都同意后延迟3秒播放开局音效
+    setTimeout(() => {
+      SoundManager.playStartSound();
+    }, 3000);
   }
 
   // 更新游戏状态
@@ -649,14 +654,14 @@ function onDrag(e) {
   const pos = getEventPos(e);
   const canvasRect = canvas.getBoundingClientRect();
 
-  // 手机端显示浮动预览
+  // 手机端显示浮动预览（往上移一格避免手指遮挡）
   if (isMobileDevice()) {
     const preview = document.getElementById('drag-preview');
     const previewWall = preview.querySelector('.drag-preview-wall');
     if (preview && previewWall) {
       preview.style.display = 'block';
       preview.style.left = pos.x + 'px';
-      preview.style.top = pos.y + 'px';
+      preview.style.top = (pos.y - 50) + 'px'; // 上移一格
       previewWall.className = 'drag-preview-wall' + (dragState.wallType === 'v' ? ' vertical' : '');
     }
   }

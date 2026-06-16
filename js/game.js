@@ -504,19 +504,22 @@ function saveMoveHistory(type, data) {
   }
 }
 
-// 显示悔棋按钮（只在轮到对手时显示）
+// 显示悔棋按钮（只在下完一步、轮到对手时显示）
 function showUndoButton() {
   const undoBtn = document.getElementById('undo-btn');
   if (!undoBtn) return;
 
-  if (multiplayerState.isOnline) {
-    // 在线模式：只在轮到对手时显示
-    if (gameState.currentPlayer !== multiplayerState.myPlayerIndex) {
+  // 检查最后一步是否是自己下的（说明刚下完，现在轮到对手）
+  if (moveHistory.length > 0) {
+    const lastMove = moveHistory[moveHistory.length - 1];
+    // 最后一步是自己下的，且现在轮到对手
+    if (lastMove.data.player !== gameState.currentPlayer) {
       undoBtn.style.display = 'inline-block';
+    } else {
+      undoBtn.style.display = 'none';
     }
   } else {
-    // 本地/人机模式：下完一步后显示
-    undoBtn.style.display = 'inline-block';
+    undoBtn.style.display = 'none';
   }
 }
 
@@ -603,11 +606,6 @@ function resetGame() {
 
   moveHistory = [];
   hideUndoButton();
-
-  // 播放开局音效（再来一局时延迟3秒）
-  setTimeout(() => {
-    SoundManager.playStartSound();
-  }, 3000);
 
   document.getElementById('win-modal').classList.remove('show');
   document.getElementById('restart-notify').style.display = 'none';

@@ -179,8 +179,7 @@ canvas {
   position: fixed;
   pointer-events: none;
   z-index: 1000;
-  transform: translate(-50%, -100%);
-  margin-top: -20px;
+  transform: translate(-50%, -50%);
 }
 
 .drag-preview-wall {

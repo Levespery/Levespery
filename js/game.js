@@ -31,7 +31,8 @@ let gameState = {
   currentPlayer: 0,
   walls: [],
   gameOver: false,
-  hoverWall: null
+  hoverWall: null,
+  lastMoveBy: -1  // 记录最后一步是谁下的（用于同步悔棋按钮）
 };
 
 // 悔棋历史记录
@@ -419,6 +420,8 @@ function checkWin() {
 
 // 切换玩家
 function switchPlayer() {
+  // 记录最后一步是谁下的（用于同步悔棋按钮）
+  gameState.lastMoveBy = gameState.currentPlayer;
   gameState.currentPlayer = gameState.currentPlayer === 0 ? 1 : 0;
   updateTurnIndicator();
   updateModeHint();
@@ -504,20 +507,14 @@ function saveMoveHistory(type, data) {
   }
 }
 
-// 显示悔棋按钮（只在下完一步、轮到对手时显示）
+// 显示悔棋按钮
 function showUndoButton() {
   const undoBtn = document.getElementById('undo-btn');
   if (!undoBtn) return;
 
-  // 检查最后一步是否是自己下的（说明刚下完，现在轮到对手）
-  if (moveHistory.length > 0) {
-    const lastMove = moveHistory[moveHistory.length - 1];
-    // 最后一步是自己下的，且现在轮到对手
-    if (lastMove.data.player !== gameState.currentPlayer) {
-      undoBtn.style.display = 'inline-block';
-    } else {
-      undoBtn.style.display = 'none';
-    }
+  // 有历史记录且最后一步不是当前玩家下的（说明刚下完，轮到对手）
+  if (moveHistory.length > 0 && gameState.lastMoveBy >= 0 && gameState.lastMoveBy !== gameState.currentPlayer) {
+    undoBtn.style.display = 'inline-block';
   } else {
     undoBtn.style.display = 'none';
   }
@@ -601,7 +598,8 @@ function resetGame() {
     currentPlayer: 0,
     walls: [],
     gameOver: false,
-    hoverWall: null
+    hoverWall: null,
+    lastMoveBy: -1
   };
 
   moveHistory = [];

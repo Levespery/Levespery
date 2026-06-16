@@ -235,6 +235,10 @@ function handleGameStateUpdate(newState) {
   gameState.currentPlayer = newState.currentPlayer;
   gameState.walls = newState.walls;
   gameState.gameOver = newState.gameOver;
+  gameState.lastMoveBy = newState.lastMoveBy !== undefined ? newState.lastMoveBy : -1;
+
+  // 同步显示悔棋按钮
+  showUndoButton();
 
   // 更新界面
   updateTurnIndicator();
@@ -654,17 +658,9 @@ function onDrag(e) {
   const pos = getEventPos(e);
   const canvasRect = canvas.getBoundingClientRect();
 
-  // 手机端显示浮动预览（往上移一格避免手指遮挡）
-  if (isMobileDevice()) {
-    const preview = document.getElementById('drag-preview');
-    const previewWall = preview.querySelector('.drag-preview-wall');
-    if (preview && previewWall) {
-      preview.style.display = 'block';
-      preview.style.left = pos.x + 'px';
-      preview.style.top = (pos.y - 50) + 'px'; // 上移一格
-      previewWall.className = 'drag-preview-wall' + (dragState.wallType === 'v' ? ' vertical' : '');
-    }
-  }
+  // 隐藏浮动预览（不使用虚影）
+  const preview = document.getElementById('drag-preview');
+  if (preview) preview.style.display = 'none';
 
   // 检查是否在棋盘范围内
   const isInBoard = pos.x >= canvasRect.left && pos.x <= canvasRect.right &&
@@ -679,9 +675,10 @@ function onDrag(e) {
     return;
   }
 
-  // 计算画布坐标
+  // 计算画布坐标（手机端上移一格，避免手指遮挡）
+  const offsetY = isMobileDevice() ? CELL_SIZE : 0;
   const canvasX = (pos.x - canvasRect.left) * (canvas.width / canvasRect.width);
-  const canvasY = (pos.y - canvasRect.top) * (canvas.height / canvasRect.height);
+  const canvasY = ((pos.y - offsetY) - canvasRect.top) * (canvas.height / canvasRect.height);
 
   // 检测墙壁位置
   const wall = getWallFromDrag(canvasX, canvasY, dragState.wallType);

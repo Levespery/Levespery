@@ -513,8 +513,8 @@ function showUndoButton() {
   const undoBtn = document.getElementById('undo-btn');
   if (!undoBtn) return;
 
-  // 有历史记录且最后一步不是当前玩家下的（说明刚下完，轮到对手）
-  if (moveHistory.length > 0 && gameState.lastMoveBy >= 0 && gameState.lastMoveBy !== gameState.currentPlayer) {
+  // 最后一步不是当前玩家下的（说明刚下完，轮到对手）
+  if (gameState.lastMoveBy >= 0 && gameState.lastMoveBy !== gameState.currentPlayer) {
     undoBtn.style.display = 'inline-block';
   } else {
     undoBtn.style.display = 'none';
@@ -559,15 +559,9 @@ function undoMove() {
 
     gameState.currentPlayer = 0;
   } else {
-    // 其他模式
+    // 本地/在线模式
     const lastMove = moveHistory.pop();
     const playerIndex = lastMove.data.player;
-
-    if (multiplayerState.isOnline && playerIndex !== multiplayerState.myPlayerIndex) {
-      alert('只能悔自己的棋！');
-      moveHistory.push(lastMove);
-      return;
-    }
 
     if (lastMove.type === 'move') {
       gameState.players[playerIndex].row = lastMove.data.fromRow;
@@ -578,6 +572,7 @@ function undoMove() {
     }
 
     gameState.currentPlayer = playerIndex;
+    gameState.lastMoveBy = -1;
   }
 
   SoundManager.playUndoSound();
@@ -587,6 +582,11 @@ function undoMove() {
   updateModeHint();
   hideUndoButton();
   render();
+
+  // 在线模式：同步悔棋状态
+  if (multiplayerState.isOnline) {
+    syncGameState();
+  }
 }
 
 // 重置游戏

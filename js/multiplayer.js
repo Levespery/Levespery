@@ -225,8 +225,11 @@ function handleGameStateUpdate(newState) {
     if (restartBtn) restartBtn.textContent = '再来一局';
 
     // 对方同意后播放开局音效
-    setTimeout(() => SoundManager.playStartSound(), 500);
+    SoundManager.playStartSound();
   }
+
+  // 检测对方悔棋（lastMoveBy 变为 -1）
+  const opponentUndone = newState.lastMoveBy === -1 && gameState.lastMoveBy >= 0;
 
   // 更新游戏状态
   gameState.players = newState.players;
@@ -235,11 +238,28 @@ function handleGameStateUpdate(newState) {
   gameState.gameOver = newState.gameOver;
   gameState.lastMoveBy = newState.lastMoveBy !== undefined ? newState.lastMoveBy : -1;
 
+  // 对方悔棋提示
+  if (opponentUndone) {
+    const indicator = document.getElementById('turn-indicator');
+    if (newState.currentPlayer === multiplayerState.myPlayerIndex) {
+      // 轮到自己了
+      indicator.textContent = '轮到你了';
+      indicator.style.background = '#c8e6c9';
+    } else {
+      // 轮到对方
+      indicator.textContent = '悔棋，轮到对方了';
+      indicator.style.background = '#fff3cd';
+    }
+    SoundManager.playUndoSound();
+  }
+
   // 同步显示悔棋按钮
   showUndoButton();
 
-  // 更新界面
-  updateTurnIndicator();
+  // 更新界面（对方悔棋时不更新回合指示器，保留悔棋提示）
+  if (!opponentUndone) {
+    updateTurnIndicator();
+  }
   updateWallCounts();
   updateModeHint();
   render();
@@ -565,8 +585,7 @@ function requestRestart() {
       notify.style.display = 'none';
       restartRequested = false;
       resetGame();
-      // 延迟播放开局音效
-      setTimeout(() => SoundManager.playStartSound(), 500);
+      SoundManager.playStartSound();
     } else {
       // 通知对方
       restartRequested = true;
@@ -575,8 +594,7 @@ function requestRestart() {
     }
   } else {
     resetGame();
-    // 延迟播放开局音效
-    setTimeout(() => SoundManager.playStartSound(), 500);
+    SoundManager.playStartSound();
   }
 }
 

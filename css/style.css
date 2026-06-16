@@ -1,0 +1,595 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 20px;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.container {
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 16px;
+  padding: 24px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+  max-width: 600px;
+  width: 100%;
+}
+
+h1 {
+  text-align: center;
+  color: #2d3436;
+  font-size: 2rem;
+  margin-bottom: 4px;
+}
+
+.subtitle {
+  text-align: center;
+  color: #636e72;
+  font-size: 0.9rem;
+  margin-bottom: 20px;
+}
+
+.game-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  padding: 12px;
+  background: #f8f9fa;
+  border-radius: 8px;
+}
+
+.player-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.9rem;
+}
+
+.player-name.black {
+  color: #1a1a1a;
+  font-weight: bold;
+}
+
+.player-name.white {
+  color: #666;
+  font-weight: bold;
+}
+
+.player-color {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 2px solid #2d3436;
+}
+
+.player-color.black {
+  background: #1a1a1a;
+}
+
+.player-color.white {
+  background: #ffffff;
+  border-color: #999;
+}
+
+.wall-count {
+  color: #636e72;
+  font-weight: 700;
+}
+
+.current-turn {
+  font-weight: bold;
+  color: #2d3436;
+  font-size: 1rem;
+  padding: 6px 16px;
+  background: #ffeaa7;
+  border-radius: 20px;
+}
+
+/* 墙壁选择器 */
+.wall-selector {
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+  margin-top: 12px;
+  margin-bottom: 16px;
+  padding: 12px;
+  background: #f8f9fa;
+  border-radius: 8px;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.wall-type {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  width: 100px;
+  height: 80px;
+  background: white;
+  border: 2px solid #ddd;
+  border-radius: 8px;
+  cursor: grab;
+  transition: all 0.2s;
+  user-select: none;
+  touch-action: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.wall-type:hover {
+  border-color: #0984e3;
+  background: #e8f4fd;
+}
+
+.wall-type:active {
+  cursor: grabbing;
+  transform: scale(0.95);
+}
+
+.wall-type span {
+  font-size: 0.65rem;
+  color: #636e72;
+  line-height: 1;
+  margin-top: auto;
+}
+
+.wall-preview {
+  width: 50px;
+  height: 12px;
+  background: #1a1a1a;
+  border-radius: 6px;
+  border: 1.5px solid #000;
+  margin-top: 19px;
+}
+
+.wall-preview.vertical {
+  width: 12px;
+  height: 50px;
+  margin-top: 0;
+}
+
+canvas {
+  display: block;
+  margin: 0 auto 16px;
+  border: 3px solid #2d3436;
+  border-radius: 8px;
+  cursor: pointer;
+  width: 100%;
+  height: auto;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.controls {
+  text-align: center;
+  margin-bottom: 16px;
+}
+
+.btn {
+  padding: 12px 32px;
+  background: #0984e3;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.btn:hover {
+  background: #0773c5;
+}
+
+.btn-undo {
+  background: #e17055;
+}
+
+.btn-undo:hover {
+  background: #d63031;
+}
+
+.controls {
+  display: flex;
+  justify-content: center;
+  gap: 15px;
+}
+
+.rules {
+  background: #f8f9fa;
+  padding: 16px;
+  border-radius: 8px;
+}
+
+.rules h3 {
+  color: #2d3436;
+  margin-bottom: 12px;
+}
+
+.rules ul {
+  list-style: none;
+  padding: 0;
+}
+
+.rules li {
+  padding: 4px 0;
+  color: #636e72;
+  font-size: 0.9rem;
+}
+
+.rules li::before {
+  content: "• ";
+  color: #0984e3;
+  font-weight: bold;
+}
+
+.modal {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.7);
+  justify-content: center;
+  align-items: center;
+  z-index: 100;
+}
+
+.modal.show {
+  display: flex;
+}
+
+.modal-content {
+  background: white;
+  padding: 40px;
+  border-radius: 16px;
+  text-align: center;
+  animation: popIn 0.3s ease;
+}
+
+.modal-content h2 {
+  color: #2d3436;
+  margin-bottom: 20px;
+  font-size: 1.8rem;
+}
+
+.win-buttons {
+  display: flex;
+  gap: 15px;
+  justify-content: center;
+  margin-top: 20px;
+}
+
+.btn-restart {
+  background: #00b894;
+}
+
+.btn-restart:hover {
+  background: #00a381;
+}
+
+.restart-notify {
+  margin-bottom: 15px;
+}
+
+.notify-bubble {
+  display: inline-block;
+  padding: 8px 16px;
+  background: #e8f5e9;
+  border: 2px solid #4caf50;
+  border-radius: 20px;
+  color: #2e7d32;
+  font-size: 0.9rem;
+  font-weight: 500;
+  animation: bounce 0.6s ease infinite alternate;
+}
+
+@keyframes bounce {
+  from { transform: translateY(0); }
+  to { transform: translateY(-5px); }
+}
+
+@keyframes popIn {
+  from {
+    transform: scale(0.8);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+/* 房间选择界面 */
+.room-section {
+  text-align: center;
+  padding: 40px 20px;
+}
+
+.room-section h2 {
+  color: #2d3436;
+  margin-bottom: 10px;
+  font-size: 1.5rem;
+}
+
+.room-desc {
+  color: #636e72;
+  margin-bottom: 30px;
+  font-size: 0.95rem;
+}
+
+.room-actions {
+  margin-bottom: 30px;
+}
+
+.btn-primary {
+  background: #00b894;
+  width: 100%;
+  max-width: 300px;
+  padding: 14px 32px;
+  font-size: 1.1rem;
+  margin-bottom: 20px;
+}
+
+.btn-primary:hover {
+  background: #00a381;
+}
+
+.divider {
+  color: #636e72;
+  margin: 20px 0;
+  font-size: 0.9rem;
+  position: relative;
+}
+
+.divider::before,
+.divider::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  width: 80px;
+  height: 1px;
+  background: #ddd;
+}
+
+.divider::before {
+  left: calc(50% - 100px);
+}
+
+.divider::after {
+  right: calc(50% - 100px);
+}
+
+.join-group {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  max-width: 300px;
+  margin: 0 auto;
+}
+
+.join-group input {
+  flex: 1;
+  padding: 12px 16px;
+  border: 2px solid #ddd;
+  border-radius: 8px;
+  font-size: 1rem;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  text-align: center;
+}
+
+.join-group input:focus {
+  outline: none;
+  border-color: #0984e3;
+}
+
+.btn-secondary {
+  background: #0984e3;
+  padding: 12px 24px;
+}
+
+.btn-secondary:hover {
+  background: #0773c5;
+}
+
+.local-play {
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px solid #eee;
+}
+
+.btn-ai {
+  background: #e17055;
+  width: 100%;
+  max-width: 300px;
+  margin-bottom: 10px;
+}
+
+.btn-ai:hover {
+  background: #d63031;
+}
+
+.btn-local {
+  background: #636e72;
+  width: 100%;
+  max-width: 300px;
+}
+
+.btn-local:hover {
+  background: #535c60;
+}
+
+/* 等待界面 */
+.waiting-section {
+  text-align: center;
+  padding: 40px 20px;
+}
+
+.waiting-section h2 {
+  color: #2d3436;
+  margin-bottom: 20px;
+  font-size: 1.5rem;
+}
+
+.room-code-display {
+  background: #f8f9fa;
+  padding: 20px;
+  border-radius: 12px;
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+
+.room-code-display span {
+  color: #636e72;
+  font-size: 0.95rem;
+}
+
+.room-code-display strong {
+  color: #2d3436;
+  font-size: 2rem;
+  letter-spacing: 4px;
+  font-family: monospace;
+}
+
+.btn-copy {
+  padding: 8px 16px;
+  background: #0984e3;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  transition: background 0.2s;
+}
+
+.btn-copy:hover {
+  background: #0773c5;
+}
+
+.waiting-hint {
+  color: #636e72;
+  margin-bottom: 20px;
+  font-size: 0.9rem;
+}
+
+.loading-spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid #eee;
+  border-top: 4px solid #0984e3;
+  border-radius: 50%;
+  margin: 20px auto;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.btn-cancel {
+  background: #d63031;
+  margin-top: 20px;
+}
+
+.btn-cancel:hover {
+  background: #c0392b;
+}
+
+/* 游戏房间信息 */
+.room-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  padding: 10px 16px;
+  background: #e8f5e9;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  color: #2d3436;
+}
+
+.room-info strong {
+  font-family: monospace;
+  letter-spacing: 2px;
+  color: #00b894;
+}
+
+#player-role {
+  font-weight: 500;
+  color: #0984e3;
+}
+
+@media (max-width: 480px) {
+  .container {
+    padding: 12px;
+  }
+
+  h1 {
+    font-size: 1.5rem;
+    margin-bottom: 2px;
+  }
+
+  .subtitle {
+    margin-bottom: 12px;
+  }
+
+  .player-info {
+    font-size: 0.8rem;
+  }
+
+  .game-info {
+    margin-bottom: 10px;
+    padding: 8px;
+  }
+
+  canvas {
+    margin-bottom: 10px;
+  }
+
+  .wall-selector {
+    margin-bottom: 10px;
+    padding: 8px;
+    gap: 15px;
+  }
+
+  .wall-type {
+    width: 90px;
+    height: 80px;
+  }
+
+  .room-code-display strong {
+    font-size: 1.5rem;
+  }
+
+  .room-info {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .rules {
+    padding: 12px;
+  }
+
+  .rules li {
+    font-size: 0.8rem;
+  }
+}

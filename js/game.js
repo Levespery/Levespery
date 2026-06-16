@@ -114,6 +114,9 @@ function handleMouseMove(e) {
   // 拖动时不处理鼠标移动，由拖动逻辑处理预览
   if (typeof dragState !== 'undefined' && dragState.isDragging) return;
 
+  // 手机端不显示点击放置预览
+  if (isMobileDevice()) return;
+
   const rect = canvas.getBoundingClientRect();
   const x = (e.clientX - rect.left) * (canvas.width / rect.width);
   const y = (e.clientY - rect.top) * (canvas.height / rect.height);
@@ -236,6 +239,12 @@ function handleWallClick(wall) {
 
 // 更新悬停墙壁预览
 function updateHoverWall(x, y) {
+  // 手机端不显示预览
+  if (isMobileDevice()) {
+    gameState.hoverWall = null;
+    return;
+  }
+
   const player = gameState.players[gameState.currentPlayer];
   if (player.walls <= 0) {
     gameState.hoverWall = null;
@@ -592,6 +601,9 @@ function resetGame() {
 
   moveHistory = [];
   hideUndoButton();
+
+  // 播放开局音效
+  SoundManager.playStartSound();
 
   document.getElementById('win-modal').classList.remove('show');
   document.getElementById('restart-notify').style.display = 'none';

@@ -178,6 +178,37 @@ const SoundManager = {
     } catch (e) {
       console.error('播放悔棋音效失败:', e);
     }
+  },
+
+  // 开局音效
+  playStartSound() {
+    if (!this.ensureContext()) return;
+
+    try {
+      const ctx = this.audioContext;
+      const now = ctx.currentTime;
+      const notes = [523, 659, 784]; // C5, E5, G5
+
+      notes.forEach((freq, i) => {
+        const oscillator = ctx.createOscillator();
+        const gainNode = ctx.createGain();
+
+        oscillator.connect(gainNode);
+        gainNode.connect(ctx.destination);
+
+        oscillator.type = 'sine';
+        oscillator.frequency.setValueAtTime(freq, now + i * 0.12);
+
+        gainNode.gain.setValueAtTime(0, now + i * 0.12);
+        gainNode.gain.linearRampToValueAtTime(0.3, now + i * 0.12 + 0.04);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, now + i * 0.12 + 0.2);
+
+        oscillator.start(now + i * 0.12);
+        oscillator.stop(now + i * 0.12 + 0.2);
+      });
+    } catch (e) {
+      console.error('播放开局音效失败:', e);
+    }
   }
 };
 

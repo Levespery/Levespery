@@ -216,6 +216,15 @@ function handleGameStateUpdate(newState) {
     return;
   }
 
+  // 如果游戏状态是新局（gameOver=false 且之前是 game over），说明对方同意了再来一局
+  if (!newState.gameOver && gameState.gameOver) {
+    document.getElementById('win-modal').classList.remove('show');
+    document.getElementById('restart-notify').style.display = 'none';
+    restartRequested = false;
+    const restartBtn = document.getElementById('btn-restart');
+    if (restartBtn) restartBtn.textContent = '再来一局';
+  }
+
   // 更新游戏状态
   gameState.players = newState.players;
   gameState.currentPlayer = newState.currentPlayer;
@@ -325,6 +334,9 @@ function startGame(initialState, isOnline) {
   }
   canvas.addEventListener('mousemove', handleMouseMove);
 
+  // 播放开局音效
+  SoundManager.playStartSound();
+
   updateTurnIndicator();
   updateWallCounts();
   updateModeHint();
@@ -332,7 +344,6 @@ function startGame(initialState, isOnline) {
 
   // 初始化拖动功能
   initWallDrag();
-  console.log('拖动功能已初始化');
 }
 
 // 处理在线模式点击
@@ -401,6 +412,9 @@ function startLocalPlay() {
   moveHistory = [];
   hideUndoButton();
 
+  // 播放开局音效
+  SoundManager.playStartSound();
+
   updateTurnIndicator();
   updateWallCounts();
   updateModeHint();
@@ -450,6 +464,9 @@ function startAIPlay() {
 
   moveHistory = [];
   hideUndoButton();
+
+  // 播放开局音效
+  SoundManager.playStartSound();
 
   updateTurnIndicator();
   updateWallCounts();

@@ -98,18 +98,6 @@ h1 {
   border-radius: 20px;
 }
 
-.mode-hint {
-  text-align: center;
-  margin-bottom: 16px;
-  padding: 10px 20px;
-  background: #fff3cd;
-  border: 1px solid #ffc107;
-  border-radius: 8px;
-  color: #856404;
-  font-size: 0.95rem;
-  font-weight: 500;
-}
-
 /* 墙壁选择器 */
 .wall-selector {
   display: flex;
@@ -168,27 +156,6 @@ h1 {
 .wall-preview.vertical {
   width: 14px;
   height: 60px;
-}
-
-/* 拖动时的墙壁预览 */
-.wall-ghost {
-  position: fixed;
-  pointer-events: none;
-  z-index: 1000;
-  opacity: 0.7;
-  border-radius: 8px;
-  border: 2px dashed #0984e3;
-  background: rgba(9, 132, 227, 0.3);
-}
-
-.wall-ghost.horizontal {
-  width: 100px;
-  height: 16px;
-}
-
-.wall-ghost.vertical {
-  width: 16px;
-  height: 100px;
 }
 
 canvas {
@@ -540,12 +507,6 @@ canvas {
   .game-info {
     margin-bottom: 10px;
     padding: 8px;
-  }
-
-  .mode-hint {
-    margin-bottom: 10px;
-    padding: 8px 12px;
-    font-size: 0.85rem;
   }
 
   canvas {

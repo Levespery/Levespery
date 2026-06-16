@@ -1,9 +1,9 @@
 // 游戏常量
 const GRID_SIZE = 9;
-const CELL_SIZE = 50;
-const GRID_OFFSET = 45;
-const WALL_THICKNESS = 8;
-const PLAYER_RADIUS = 18;
+const CELL_SIZE = 60;
+const GRID_OFFSET = 30;
+const WALL_THICKNESS = 10;
+const PLAYER_RADIUS = 22;
 
 // 颜色定义
 const COLORS = {
@@ -61,6 +61,11 @@ function isMobileDevice() {
 function handleClick(e) {
   if (gameState.gameOver) return;
 
+  // 如果正在拖动，完全忽略点击
+  if (typeof dragState !== 'undefined' && dragState.isDragging) {
+    return;
+  }
+
   // 在线模式下检查是否轮到自己
   if (multiplayerState.isOnline && gameState.currentPlayer !== multiplayerState.myPlayerIndex) {
     return;
@@ -92,6 +97,9 @@ function handleClick(e) {
 // 处理鼠标移动（用于墙壁预览）
 function handleMouseMove(e) {
   if (gameState.gameOver) return;
+
+  // 拖动时不处理鼠标移动，由拖动逻辑处理预览
+  if (typeof dragState !== 'undefined' && dragState.isDragging) return;
 
   const rect = canvas.getBoundingClientRect();
   const x = (e.clientX - rect.left) * (canvas.width / rect.width);
@@ -178,10 +186,16 @@ function handleWallClick(wall) {
   if (player.walls <= 0) return;
 
   // 检查墙壁是否重叠
-  if (isWallOverlapping(wall)) return;
+  if (isWallOverlapping(wall)) {
+    console.log('墙壁重叠，无法放置');
+    return;
+  }
 
   // 检查是否完全封死对手
-  if (wouldBlockCompletely(wall)) return;
+  if (wouldBlockCompletely(wall)) {
+    console.log('会封死对手，无法放置');
+    return;
+  }
 
   // 保存历史记录（用于悔棋）
   saveMoveHistory('wall', {
@@ -216,31 +230,50 @@ function updateHoverWall(x, y) {
   gameState.hoverWall = getWallFromClick(x, y);
 }
 
-// 从点击位置获取墙壁信息
+// 从点击位置获取墙壁信息（点击检测范围小）
 function getWallFromClick(x, y) {
-  // 计算相对于网格的位置
+  return getWallFromPosition(x, y, 0.15, null);
+}
+
+// 从拖动位置获取墙壁信息（拖动检测范围大，指定方向）
+function getWallFromDrag(x, y, orientation) {
+  return getWallFromPosition(x, y, 0.4, orientation);
+}
+
+// 通用墙壁检测函数 - 检测格子边缘
+function getWallFromPosition(x, y, threshold, orientation) {
   const relX = x - GRID_OFFSET;
   const relY = y - GRID_OFFSET;
 
-  // 检测是否在水平墙壁区域（两行之间）
-  const rowGap = relY / CELL_SIZE;
-  const rowInt = Math.floor(rowGap);
-  const rowFrac = rowGap - rowInt;
-
-  // 检测是否在垂直墙壁区域（两列之间）
-  const colGap = relX / CELL_SIZE;
-  const colInt = Math.floor(colGap);
-  const colFrac = colGap - colInt;
-
-  // 判断是水平墙还是垂直墙
-  if (rowFrac > 0.7 && rowFrac < 1.0 && colInt >= 0 && colInt < GRID_SIZE - 1 && rowInt >= 0 && rowInt < GRID_SIZE - 1) {
-    // 水平墙壁
-    return { row: rowInt, col: colInt, orientation: 'h' };
+  // 边界检查
+  if (relX < 0 || relX > GRID_SIZE * CELL_SIZE || relY < 0 || relY > GRID_SIZE * CELL_SIZE) {
+    return null;
   }
 
-  if (colFrac > 0.7 && colFrac < 1.0 && colInt >= 0 && colInt < GRID_SIZE - 1 && rowInt >= 0 && rowInt < GRID_SIZE - 1) {
-    // 垂直墙壁
-    return { row: rowInt, col: colInt, orientation: 'v' };
+  // 只检测水平墙
+  if (orientation === null || orientation === 'h') {
+    for (let row = 0; row < GRID_SIZE - 1; row++) {
+      const edgeY = (row + 1) * CELL_SIZE;
+      if (Math.abs(relY - edgeY) < CELL_SIZE * threshold) {
+        const col = Math.floor(relX / CELL_SIZE);
+        if (col >= 0 && col < GRID_SIZE - 1) {
+          return { row: row, col: col, orientation: 'h' };
+        }
+      }
+    }
+  }
+
+  // 只检测垂直墙
+  if (orientation === null || orientation === 'v') {
+    for (let col = 0; col < GRID_SIZE - 1; col++) {
+      const edgeX = (col + 1) * CELL_SIZE;
+      if (Math.abs(relX - edgeX) < CELL_SIZE * threshold) {
+        const row = Math.floor(relY / CELL_SIZE);
+        if (row >= 0 && row < GRID_SIZE - 1) {
+          return { row: row, col: col, orientation: 'v' };
+        }
+      }
+    }
   }
 
   return null;
@@ -249,11 +282,27 @@ function getWallFromClick(x, y) {
 // 检查墙壁是否重叠
 function isWallOverlapping(newWall) {
   for (const wall of gameState.walls) {
+    // 完全相同的位置和方向
     if (wall.row === newWall.row && wall.col === newWall.col && wall.orientation === newWall.orientation) {
       return true;
     }
 
-    // 检查交叉重叠
+    // 同方向相邻墙壁重叠
+    if (wall.orientation === newWall.orientation) {
+      if (wall.orientation === 'h') {
+        // 水平墙：检查相邻列
+        if (wall.row === newWall.row && Math.abs(wall.col - newWall.col) === 1) {
+          return true;
+        }
+      } else {
+        // 垂直墙：检查相邻行
+        if (wall.col === newWall.col && Math.abs(wall.row - newWall.row) === 1) {
+          return true;
+        }
+      }
+    }
+
+    // 不同方向交叉重叠
     if (wall.orientation !== newWall.orientation) {
       if (wall.row === newWall.row && wall.col === newWall.col) return true;
     }
@@ -350,18 +399,29 @@ function switchPlayer() {
 // 更新回合指示器
 function updateTurnIndicator() {
   const indicator = document.getElementById('turn-indicator');
-  indicator.textContent = `轮到: 玩家 ${gameState.currentPlayer + 1}`;
+
+  if (multiplayerState.isOnline) {
+    // 在线模式：根据是否轮到自己显示不同提示
+    if (gameState.currentPlayer === multiplayerState.myPlayerIndex) {
+      indicator.textContent = '轮到你了！';
+      indicator.style.background = '#c8e6c9';
+    } else {
+      indicator.textContent = '对方思考中…';
+      indicator.style.background = '#ffeaa7';
+    }
+  } else {
+    // 本地模式
+    indicator.textContent = `轮到: 玩家 ${gameState.currentPlayer + 1}`;
+    indicator.style.background = '#ffeaa7';
+  }
 }
 
 // 更新模式提示
 function updateModeHint() {
-  const hint = document.getElementById('mode-hint');
-  const player = gameState.players[gameState.currentPlayer];
-  hint.textContent = `可以放置墙壁 (${player.walls}个) 或 移动棋子`;
-
   // 更新墙壁选择器显示
   const wallSelector = document.getElementById('wall-selector');
   if (wallSelector) {
+    const player = gameState.players[gameState.currentPlayer];
     wallSelector.style.display = player.walls > 0 ? 'flex' : 'none';
   }
 }

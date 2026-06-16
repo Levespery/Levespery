@@ -467,9 +467,10 @@ function leaveGame() {
 let dragState = {
   isDragging: false,
   wallType: null,
-  ghost: null,
   startX: 0,
-  startY: 0
+  startY: 0,
+  lastValidWall: null,
+  lastRenderTime: 0
 };
 
 function initWallDrag() {
@@ -492,94 +493,110 @@ function initWallDrag() {
 
 function startDrag(e, wallType) {
   e.preventDefault();
+  e.stopPropagation();
+
   const player = gameState.players[gameState.currentPlayer];
   if (player.walls <= 0) return;
 
-  dragState.isDragging = true;
-  dragState.wallType = wallType;
+  // 完全重置拖动状态
+  dragState = {
+    isDragging: true,
+    wallType: wallType,
+    startX: 0,
+    startY: 0,
+    lastValidWall: null,
+    lastRenderTime: 0
+  };
+  gameState.hoverWall = null;
 
-  // 创建拖动预览
-  const ghost = document.createElement('div');
-  ghost.className = `wall-ghost ${wallType === 'h' ? 'horizontal' : 'vertical'}`;
-  document.body.appendChild(ghost);
-  dragState.ghost = ghost;
-
-  // 更新位置
   const pos = getEventPos(e);
   dragState.startX = pos.x;
   dragState.startY = pos.y;
-  updateGhostPosition(pos.x, pos.y);
 }
 
 function onDrag(e) {
   if (!dragState.isDragging) return;
   e.preventDefault();
+  e.stopPropagation(); // 阻止事件冒泡到点击处理器
+
+  // 节流：限制渲染频率（每16ms最多渲染一次，约60fps）
+  const now = Date.now();
+  if (now - dragState.lastRenderTime < 16) return;
+  dragState.lastRenderTime = now;
 
   const pos = getEventPos(e);
-  updateGhostPosition(pos.x, pos.y);
-
-  // 在画布上显示墙壁预览
   const canvasRect = canvas.getBoundingClientRect();
+
+  // 检查鼠标是否在棋盘范围内
+  const isInBoard = pos.x >= canvasRect.left && pos.x <= canvasRect.right &&
+                    pos.y >= canvasRect.top && pos.y <= canvasRect.bottom;
+
+  if (!isInBoard) {
+    if (gameState.hoverWall) {
+      gameState.hoverWall = null;
+      dragState.lastValidWall = null;
+      render();
+    }
+    return;
+  }
+
+  // 鼠标在棋盘内，计算画布坐标
   const canvasX = (pos.x - canvasRect.left) * (canvas.width / canvasRect.width);
   const canvasY = (pos.y - canvasRect.top) * (canvas.height / canvasRect.height);
 
-  const wall = getWallFromClick(canvasX, canvasY);
+  // 使用当前拖动类型检测墙壁位置（只检测对应方向）
+  const wall = getWallFromDrag(canvasX, canvasY, dragState.wallType);
+
+  // 只接受与拖动类型匹配的墙壁
   if (wall && wall.orientation === dragState.wallType) {
-    gameState.hoverWall = wall;
-  } else {
-    gameState.hoverWall = null;
+    // 强制确保方向正确
+    const validWall = { row: wall.row, col: wall.col, orientation: dragState.wallType };
+    if (!gameState.hoverWall || gameState.hoverWall.row !== validWall.row || gameState.hoverWall.col !== validWall.col) {
+      gameState.hoverWall = validWall;
+      dragState.lastValidWall = validWall;
+      render();
+    }
   }
-  render();
+  // 保持上一个有效位置
+  else if (dragState.lastValidWall) {
+    if (!gameState.hoverWall || gameState.hoverWall.row !== dragState.lastValidWall.row || gameState.hoverWall.col !== dragState.lastValidWall.col) {
+      gameState.hoverWall = dragState.lastValidWall;
+      render();
+    }
+  }
+  // 没有有效位置，清除预览
+  else {
+    if (gameState.hoverWall) {
+      gameState.hoverWall = null;
+      render();
+    }
+  }
 }
 
 function endDrag(e) {
   if (!dragState.isDragging) return;
 
+  // 记录是否成功放置
+  let placed = false;
+
   // 在线模式下检查是否轮到自己
   if (multiplayerState.isOnline && gameState.currentPlayer !== multiplayerState.myPlayerIndex) {
-    // 清理 ghost 元素
-    if (dragState.ghost) {
-      dragState.ghost.remove();
-      dragState.ghost = null;
-    }
-    dragState.isDragging = false;
-    dragState.wallType = null;
-    gameState.hoverWall = null;
-    render();
-    return;
-  }
-
-  const pos = getEventPos(e);
-  const canvasRect = canvas.getBoundingClientRect();
-  const canvasX = (pos.x - canvasRect.left) * (canvas.width / canvasRect.width);
-  const canvasY = (pos.y - canvasRect.top) * (canvas.height / canvasRect.height);
-
-  // 尝试放置墙壁
-  const wall = getWallFromClick(canvasX, canvasY);
-  if (wall && wall.orientation === dragState.wallType) {
-    handleWallClick(wall);
+    // 不是自己的回合，清除状态
+  } else if (dragState.lastValidWall && dragState.lastValidWall.orientation === dragState.wallType) {
+    // 使用最后有效的墙壁位置进行放置
+    handleWallClick(dragState.lastValidWall);
+    placed = true;
     if (multiplayerState.isOnline) {
       syncGameState();
     }
   }
 
-  // 清理 ghost 元素
-  if (dragState.ghost) {
-    dragState.ghost.remove();
-    dragState.ghost = null;
-  }
-
+  // 清除拖动状态
   dragState.isDragging = false;
   dragState.wallType = null;
+  dragState.lastValidWall = null;
   gameState.hoverWall = null;
   render();
-}
-
-function updateGhostPosition(x, y) {
-  if (dragState.ghost) {
-    dragState.ghost.style.left = (x - 50) + 'px';
-    dragState.ghost.style.top = (y - 8) + 'px';
-  }
 }
 
 function getEventPos(e) {

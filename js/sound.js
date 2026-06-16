@@ -1,123 +1,193 @@
 // 音效管理
 const SoundManager = {
   audioContext: null,
+  initialized: false,
 
   init() {
-    this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    if (this.initialized && this.audioContext) return;
+    try {
+      this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      this.initialized = true;
+      console.log('音效系统初始化成功');
+    } catch (e) {
+      console.error('音效初始化失败:', e);
+    }
+  },
+
+  // 确保音频上下文可用
+  ensureContext() {
+    if (!this.audioContext) {
+      this.init();
+    }
+    if (this.audioContext && this.audioContext.state === 'suspended') {
+      this.audioContext.resume().then(() => {
+        console.log('音频上下文已恢复');
+      });
+    }
+    return this.audioContext && this.audioContext.state === 'running';
   },
 
   // 棋子移动音效（清脆）
   playMoveSound() {
-    if (!this.audioContext) this.init();
+    if (!this.ensureContext()) return;
 
-    const oscillator = this.audioContext.createOscillator();
-    const gainNode = this.audioContext.createGain();
+    try {
+      const ctx = this.audioContext;
+      const now = ctx.currentTime;
 
-    oscillator.connect(gainNode);
-    gainNode.connect(this.audioContext.destination);
+      const oscillator = ctx.createOscillator();
+      const gainNode = ctx.createGain();
 
-    oscillator.type = 'sine';
-    oscillator.frequency.setValueAtTime(800, this.audioContext.currentTime);
-    oscillator.frequency.exponentialRampToValueAtTime(600, this.audioContext.currentTime + 0.1);
+      oscillator.connect(gainNode);
+      gainNode.connect(ctx.destination);
 
-    gainNode.gain.setValueAtTime(0.3, this.audioContext.currentTime);
-    gainNode.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + 0.15);
+      oscillator.type = 'sine';
+      oscillator.frequency.setValueAtTime(800, now);
+      oscillator.frequency.exponentialRampToValueAtTime(600, now + 0.1);
 
-    oscillator.start(this.audioContext.currentTime);
-    oscillator.stop(this.audioContext.currentTime + 0.15);
+      gainNode.gain.setValueAtTime(0.3, now);
+      gainNode.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
+
+      oscillator.start(now);
+      oscillator.stop(now + 0.15);
+    } catch (e) {
+      console.error('播放移动音效失败:', e);
+    }
   },
 
   // 墙壁放置音效（闷沉）
   playWallSound() {
-    if (!this.audioContext) this.init();
+    if (!this.ensureContext()) {
+      console.warn('音频上下文不可用');
+      return;
+    }
 
-    const oscillator = this.audioContext.createOscillator();
-    const gainNode = this.audioContext.createGain();
-    const filter = this.audioContext.createBiquadFilter();
+    try {
+      const ctx = this.audioContext;
+      const now = ctx.currentTime;
 
-    oscillator.connect(filter);
-    filter.connect(gainNode);
-    gainNode.connect(this.audioContext.destination);
+      const oscillator = ctx.createOscillator();
+      const gainNode = ctx.createGain();
+      const filter = ctx.createBiquadFilter();
 
-    filter.type = 'lowpass';
-    filter.frequency.setValueAtTime(300, this.audioContext.currentTime);
+      oscillator.connect(filter);
+      filter.connect(gainNode);
+      gainNode.connect(ctx.destination);
 
-    oscillator.type = 'sine';
-    oscillator.frequency.setValueAtTime(200, this.audioContext.currentTime);
-    oscillator.frequency.exponentialRampToValueAtTime(100, this.audioContext.currentTime + 0.2);
+      filter.type = 'lowpass';
+      filter.frequency.setValueAtTime(300, now);
 
-    gainNode.gain.setValueAtTime(0.4, this.audioContext.currentTime);
-    gainNode.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + 0.2);
+      oscillator.type = 'sine';
+      oscillator.frequency.setValueAtTime(200, now);
+      oscillator.frequency.exponentialRampToValueAtTime(100, now + 0.2);
 
-    oscillator.start(this.audioContext.currentTime);
-    oscillator.stop(this.audioContext.currentTime + 0.2);
+      gainNode.gain.setValueAtTime(0.5, now);
+      gainNode.gain.exponentialRampToValueAtTime(0.01, now + 0.2);
+
+      oscillator.start(now);
+      oscillator.stop(now + 0.2);
+      console.log('播放墙壁音效');
+    } catch (e) {
+      console.error('播放墙壁音效失败:', e);
+    }
   },
 
   // 跳跃音效
   playJumpSound() {
-    if (!this.audioContext) this.init();
+    if (!this.ensureContext()) return;
 
-    const oscillator = this.audioContext.createOscillator();
-    const gainNode = this.audioContext.createGain();
+    try {
+      const ctx = this.audioContext;
+      const now = ctx.currentTime;
 
-    oscillator.connect(gainNode);
-    gainNode.connect(this.audioContext.destination);
+      const oscillator = ctx.createOscillator();
+      const gainNode = ctx.createGain();
 
-    oscillator.type = 'sine';
-    oscillator.frequency.setValueAtTime(400, this.audioContext.currentTime);
-    oscillator.frequency.exponentialRampToValueAtTime(1000, this.audioContext.currentTime + 0.1);
-    oscillator.frequency.exponentialRampToValueAtTime(600, this.audioContext.currentTime + 0.2);
+      oscillator.connect(gainNode);
+      gainNode.connect(ctx.destination);
 
-    gainNode.gain.setValueAtTime(0.3, this.audioContext.currentTime);
-    gainNode.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + 0.25);
+      oscillator.type = 'sine';
+      oscillator.frequency.setValueAtTime(400, now);
+      oscillator.frequency.exponentialRampToValueAtTime(1000, now + 0.1);
+      oscillator.frequency.exponentialRampToValueAtTime(600, now + 0.2);
 
-    oscillator.start(this.audioContext.currentTime);
-    oscillator.stop(this.audioContext.currentTime + 0.25);
+      gainNode.gain.setValueAtTime(0.3, now);
+      gainNode.gain.exponentialRampToValueAtTime(0.01, now + 0.25);
+
+      oscillator.start(now);
+      oscillator.stop(now + 0.25);
+    } catch (e) {
+      console.error('播放跳跃音效失败:', e);
+    }
   },
 
   // 胜利音效
   playWinSound() {
-    if (!this.audioContext) this.init();
+    if (!this.ensureContext()) return;
 
-    const notes = [523, 659, 784, 1047]; // C5, E5, G5, C6
+    try {
+      const ctx = this.audioContext;
+      const now = ctx.currentTime;
+      const notes = [523, 659, 784, 1047]; // C5, E5, G5, C6
 
-    notes.forEach((freq, i) => {
-      const oscillator = this.audioContext.createOscillator();
-      const gainNode = this.audioContext.createGain();
+      notes.forEach((freq, i) => {
+        const oscillator = ctx.createOscillator();
+        const gainNode = ctx.createGain();
 
-      oscillator.connect(gainNode);
-      gainNode.connect(this.audioContext.destination);
+        oscillator.connect(gainNode);
+        gainNode.connect(ctx.destination);
 
-      oscillator.type = 'sine';
-      oscillator.frequency.setValueAtTime(freq, this.audioContext.currentTime + i * 0.15);
+        oscillator.type = 'sine';
+        oscillator.frequency.setValueAtTime(freq, now + i * 0.15);
 
-      gainNode.gain.setValueAtTime(0, this.audioContext.currentTime + i * 0.15);
-      gainNode.gain.linearRampToValueAtTime(0.3, this.audioContext.currentTime + i * 0.15 + 0.05);
-      gainNode.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + i * 0.15 + 0.3);
+        gainNode.gain.setValueAtTime(0, now + i * 0.15);
+        gainNode.gain.linearRampToValueAtTime(0.3, now + i * 0.15 + 0.05);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, now + i * 0.15 + 0.3);
 
-      oscillator.start(this.audioContext.currentTime + i * 0.15);
-      oscillator.stop(this.audioContext.currentTime + i * 0.15 + 0.3);
-    });
+        oscillator.start(now + i * 0.15);
+        oscillator.stop(now + i * 0.15 + 0.3);
+      });
+    } catch (e) {
+      console.error('播放胜利音效失败:', e);
+    }
   },
 
   // 悔棋音效
   playUndoSound() {
-    if (!this.audioContext) this.init();
+    if (!this.ensureContext()) return;
 
-    const oscillator = this.audioContext.createOscillator();
-    const gainNode = this.audioContext.createGain();
+    try {
+      const ctx = this.audioContext;
+      const now = ctx.currentTime;
 
-    oscillator.connect(gainNode);
-    gainNode.connect(this.audioContext.destination);
+      const oscillator = ctx.createOscillator();
+      const gainNode = ctx.createGain();
 
-    oscillator.type = 'sine';
-    oscillator.frequency.setValueAtTime(600, this.audioContext.currentTime);
-    oscillator.frequency.exponentialRampToValueAtTime(400, this.audioContext.currentTime + 0.15);
+      oscillator.connect(gainNode);
+      gainNode.connect(ctx.destination);
 
-    gainNode.gain.setValueAtTime(0.2, this.audioContext.currentTime);
-    gainNode.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + 0.15);
+      oscillator.type = 'sine';
+      oscillator.frequency.setValueAtTime(600, now);
+      oscillator.frequency.exponentialRampToValueAtTime(400, now + 0.15);
 
-    oscillator.start(this.audioContext.currentTime);
-    oscillator.stop(this.audioContext.currentTime + 0.15);
+      gainNode.gain.setValueAtTime(0.2, now);
+      gainNode.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
+
+      oscillator.start(now);
+      oscillator.stop(now + 0.15);
+    } catch (e) {
+      console.error('播放悔棋音效失败:', e);
+    }
   }
 };
+
+// 在用户交互后初始化音效系统
+document.addEventListener('click', function initAudio() {
+  SoundManager.init();
+  document.removeEventListener('click', initAudio);
+}, { once: true });
+
+document.addEventListener('touchstart', function initAudio() {
+  SoundManager.init();
+  document.removeEventListener('touchstart', initAudio);
+}, { once: true });

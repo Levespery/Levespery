@@ -224,10 +224,8 @@ function handleGameStateUpdate(newState) {
     const restartBtn = document.getElementById('btn-restart');
     if (restartBtn) restartBtn.textContent = '再来一局';
 
-    // 双方都同意后延迟3秒播放开局音效
-    setTimeout(() => {
-      SoundManager.playStartSound();
-    }, 3000);
+    // 对方同意后播放开局音效
+    setTimeout(() => SoundManager.playStartSound(), 500);
   }
 
   // 更新游戏状态
@@ -270,7 +268,8 @@ async function syncGameState() {
       players: gameState.players,
       currentPlayer: gameState.currentPlayer,
       walls: gameState.walls,
-      gameOver: gameState.gameOver
+      gameOver: gameState.gameOver,
+      lastMoveBy: gameState.lastMoveBy
     };
 
     const { error } = await supabaseClient
@@ -566,15 +565,18 @@ function requestRestart() {
       notify.style.display = 'none';
       restartRequested = false;
       resetGame();
+      // 延迟播放开局音效
+      setTimeout(() => SoundManager.playStartSound(), 500);
     } else {
       // 通知对方
       restartRequested = true;
       notifyRestart();
-      // 改变按钮文字提示已发送
       document.getElementById('btn-restart').textContent = '等待对方确认...';
     }
   } else {
     resetGame();
+    // 延迟播放开局音效
+    setTimeout(() => SoundManager.playStartSound(), 500);
   }
 }
 

@@ -487,7 +487,8 @@ function showWinMessage() {
     }
   } else {
     // 其他模式
-    message.textContent = `玩家 ${gameState.currentPlayer + 1} 获胜！`;
+    const winner = gameState.currentPlayer === 0 ? '黑方' : '白方';
+    message.textContent = `${winner}获胜！`;
   }
 
   modal.classList.add('show');

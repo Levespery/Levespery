@@ -493,10 +493,18 @@ function saveMoveHistory(type, data) {
   }
 }
 
-// 显示悔棋按钮
+// 显示悔棋按钮（只在轮到对手时显示）
 function showUndoButton() {
   const undoBtn = document.getElementById('undo-btn');
-  if (undoBtn) {
+  if (!undoBtn) return;
+
+  if (multiplayerState.isOnline) {
+    // 在线模式：只在轮到对手时显示
+    if (gameState.currentPlayer !== multiplayerState.myPlayerIndex) {
+      undoBtn.style.display = 'inline-block';
+    }
+  } else {
+    // 本地/人机模式：下完一步后显示
     undoBtn.style.display = 'inline-block';
   }
 }
@@ -587,6 +595,12 @@ function resetGame() {
 
   document.getElementById('win-modal').classList.remove('show');
   document.getElementById('restart-notify').style.display = 'none';
+
+  // 重置再来一局状态
+  restartRequested = false;
+  const restartBtn = document.getElementById('btn-restart');
+  if (restartBtn) restartBtn.textContent = '再来一局';
+
   updateTurnIndicator();
   updateWallCounts();
   updateModeHint();

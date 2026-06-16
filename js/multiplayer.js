@@ -529,20 +529,25 @@ function leaveGame() {
 }
 
 // 请求再来一局
+let restartRequested = false;
+
 function requestRestart() {
   const notify = document.getElementById('restart-notify');
 
   if (multiplayerState.isOnline) {
-    // 如果对方已经发了请求，直接开始新局
-    if (notify && notify.style.display === 'block') {
+    // 如果对方已经发了请求，或者自己已发过请求，直接开始新局
+    if ((notify && notify.style.display === 'block') || restartRequested) {
       notify.style.display = 'none';
+      restartRequested = false;
       resetGame();
     } else {
-      // 否则通知对方
+      // 通知对方
+      restartRequested = true;
       notifyRestart();
+      // 改变按钮文字提示已发送
+      document.getElementById('btn-restart').textContent = '等待对方确认...';
     }
   } else {
-    // 本地/人机模式：直接重置
     resetGame();
   }
 }

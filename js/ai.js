@@ -142,16 +142,22 @@ const AI = {
     if (gameState.gameOver) return;
     if (gameState.currentPlayer !== 1) return; // AI 是玩家 2
 
+    console.log('AI 开始思考...');
+
     // 添加延迟让 AI 有"思考"的感觉
     await this.sleep(400 + Math.random() * 500);
 
     const bestAction = this.evaluate();
+    console.log('AI 决定:', bestAction);
+
     if (bestAction) {
       if (bestAction.type === 'move') {
         this.executeMove(bestAction.row, bestAction.col);
       } else if (bestAction.type === 'wall') {
         this.executeWall(bestAction.wall);
       }
+    } else {
+      console.log('AI 没有找到有效动作');
     }
   },
 
@@ -546,7 +552,8 @@ const AI = {
       SoundManager.playMoveSound();
     }
 
-    showUndoButton();
+    // 设置 lastMoveBy
+    gameState.lastMoveBy = 1;
 
     if (checkWin()) {
       gameState.gameOver = true;
@@ -557,6 +564,7 @@ const AI = {
     }
 
     switchPlayer();
+    showUndoButton();
     render();
   },
 
@@ -574,9 +582,12 @@ const AI = {
     player.walls--;
 
     SoundManager.playWallSound();
-    showUndoButton();
+
+    // 设置 lastMoveBy
+    gameState.lastMoveBy = 1;
 
     switchPlayer();
+    showUndoButton();
     gameState.hoverWall = null;
     render();
   }

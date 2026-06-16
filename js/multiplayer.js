@@ -639,9 +639,9 @@ function startDrag(e, wallType) {
 function onDrag(e) {
   if (!dragState.isDragging) return;
   e.preventDefault();
-  e.stopPropagation(); // 阻止事件冒泡到点击处理器
+  e.stopPropagation();
 
-  // 节流：限制渲染频率（每16ms最多渲染一次，约60fps）
+  // 节流
   const now = Date.now();
   if (now - dragState.lastRenderTime < 16) return;
   dragState.lastRenderTime = now;
@@ -649,7 +649,19 @@ function onDrag(e) {
   const pos = getEventPos(e);
   const canvasRect = canvas.getBoundingClientRect();
 
-  // 检查鼠标是否在棋盘范围内
+  // 手机端显示浮动预览
+  if (isMobileDevice()) {
+    const preview = document.getElementById('drag-preview');
+    const previewWall = preview.querySelector('.drag-preview-wall');
+    if (preview && previewWall) {
+      preview.style.display = 'block';
+      preview.style.left = pos.x + 'px';
+      preview.style.top = pos.y + 'px';
+      previewWall.className = 'drag-preview-wall' + (dragState.wallType === 'v' ? ' vertical' : '');
+    }
+  }
+
+  // 检查是否在棋盘范围内
   const isInBoard = pos.x >= canvasRect.left && pos.x <= canvasRect.right &&
                     pos.y >= canvasRect.top && pos.y <= canvasRect.bottom;
 
@@ -662,32 +674,26 @@ function onDrag(e) {
     return;
   }
 
-  // 鼠标在棋盘内，计算画布坐标
+  // 计算画布坐标
   const canvasX = (pos.x - canvasRect.left) * (canvas.width / canvasRect.width);
   const canvasY = (pos.y - canvasRect.top) * (canvas.height / canvasRect.height);
 
-  // 使用当前拖动类型检测墙壁位置（只检测对应方向）
+  // 检测墙壁位置
   const wall = getWallFromDrag(canvasX, canvasY, dragState.wallType);
 
-  // 只接受与拖动类型匹配的墙壁
   if (wall && wall.orientation === dragState.wallType) {
-    // 强制确保方向正确
     const validWall = { row: wall.row, col: wall.col, orientation: dragState.wallType };
     if (!gameState.hoverWall || gameState.hoverWall.row !== validWall.row || gameState.hoverWall.col !== validWall.col) {
       gameState.hoverWall = validWall;
       dragState.lastValidWall = validWall;
       render();
     }
-  }
-  // 保持上一个有效位置
-  else if (dragState.lastValidWall) {
+  } else if (dragState.lastValidWall) {
     if (!gameState.hoverWall || gameState.hoverWall.row !== dragState.lastValidWall.row || gameState.hoverWall.col !== dragState.lastValidWall.col) {
       gameState.hoverWall = dragState.lastValidWall;
       render();
     }
-  }
-  // 没有有效位置，清除预览
-  else {
+  } else {
     if (gameState.hoverWall) {
       gameState.hoverWall = null;
       render();
@@ -716,6 +722,10 @@ function endDrag(e) {
       setTimeout(() => AI.makeMove(), 100);
     }
   }
+
+  // 隐藏浮动预览
+  const preview = document.getElementById('drag-preview');
+  if (preview) preview.style.display = 'none';
 
   // 清除拖动状态
   dragState.isDragging = false;

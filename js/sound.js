@@ -182,7 +182,17 @@ const SoundManager = {
 
   // 开局音效
   playStartSound() {
-    if (!this.ensureContext()) return;
+    // 直接初始化并播放，不检查状态
+    if (!this.audioContext) {
+      this.init();
+    }
+
+    // 确保音频上下文恢复
+    if (this.audioContext && this.audioContext.state === 'suspended') {
+      this.audioContext.resume();
+    }
+
+    if (!this.audioContext) return;
 
     try {
       const ctx = this.audioContext;

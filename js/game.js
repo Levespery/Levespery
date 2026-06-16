@@ -181,9 +181,6 @@ function handleMoveClick(x, y) {
     SoundManager.playMoveSound();
   }
 
-  // 显示悔棋按钮
-  showUndoButton();
-
   // 检查是否获胜
   if (checkWin()) {
     gameState.gameOver = true;
@@ -195,6 +192,10 @@ function handleMoveClick(x, y) {
 
   // 切换玩家
   switchPlayer();
+
+  // 显示悔棋按钮（在切换玩家后，这样在线模式能正确判断）
+  showUndoButton();
+
   render();
 }
 
@@ -228,11 +229,12 @@ function handleWallClick(wall) {
   // 播放音效
   SoundManager.playWallSound();
 
-  // 显示悔棋按钮
-  showUndoButton();
-
   // 切换玩家
   switchPlayer();
+
+  // 显示悔棋按钮（在切换玩家后）
+  showUndoButton();
+
   gameState.hoverWall = null;
   render();
 }
@@ -602,8 +604,10 @@ function resetGame() {
   moveHistory = [];
   hideUndoButton();
 
-  // 播放开局音效
-  SoundManager.playStartSound();
+  // 播放开局音效（再来一局时延迟3秒）
+  setTimeout(() => {
+    SoundManager.playStartSound();
+  }, 3000);
 
   document.getElementById('win-modal').classList.remove('show');
   document.getElementById('restart-notify').style.display = 'none';

@@ -31,7 +31,7 @@ function initSupabase() {
 // 页面加载后初始化
 window.addEventListener('DOMContentLoaded', () => {
   // 延迟一点确保 SDK 已加载
-  setTimeout(() => {
+  setTimeout(async () => {
     initSupabase();
     // 初始化完成后获取房间列表并订阅
     setTimeout(() => {
@@ -40,6 +40,17 @@ window.addEventListener('DOMContentLoaded', () => {
         subscribeRoomList();
       }
     }, 200);
+
+    // 尝试断线重连
+    setTimeout(async () => {
+      if (supabaseReady) {
+        const reconnected = await attemptReconnect();
+        if (!reconnected) {
+          // 重连失败，清理过期房间
+          cleanupStaleRooms();
+        }
+      }
+    }, 500);
   }, 100);
 });
 
@@ -59,6 +70,11 @@ let aiMode = false;
 
 // 缓存最新游戏状态，供 leaveRoomSync（浏览器关闭时的同步请求）使用
 let cachedGameState = null;
+
+// 心跳定时器
+let heartbeatTimer = null;
+const HEARTBEAT_INTERVAL = 10000; // 10秒心跳间隔
+const HEARTBEAT_TIMEOUT = 25000;  // 25秒无心跳认为对方离线
 
 // #region agent log
 const _DBG = 'http://127.0.0.1:7337/ingest/6c759ce4-4672-4e6a-ac30-de089d8ba20c';
@@ -207,6 +223,12 @@ async function confirmCreateRoom() {
     showWaitingRoom(roomName);
     subscribeToRoom(data.id);
 
+    // 保存房间状态到 localStorage（支持断线重连）
+    saveRoomState();
+
+    // 启动心跳
+    startHeartbeat();
+
   } catch (error) {
     console.error('创建房间失败:', error);
     alert('创建房间失败: ' + (error.message || '请检查 Supabase 配置'));
@@ -264,7 +286,8 @@ async function joinRoomByName(roomId, roomName) {
     const updatedState = {
       ...data.game_state,
       player2Joined: true,
-      guestActive: true
+      guestActive: true,
+      guestLastHeartbeat: Date.now()
     };
 
     await supabaseClient
@@ -274,6 +297,12 @@ async function joinRoomByName(roomId, roomName) {
 
     startGame(updatedState, true);
     subscribeToRoom(data.id);
+
+    // 保存房间状态到 localStorage（支持断线重连）
+    saveRoomState();
+
+    // 启动心跳
+    startHeartbeat();
 
   } catch (error) {
     console.error('加入房间失败:', error);
@@ -483,6 +512,13 @@ function handleGameStateUpdate(newState) {
   // 缓存最新状态
   const oldState = cachedGameState ? { ...cachedGameState } : null;
   cachedGameState = { ...newState };
+
+  // 更新对方心跳时间
+  if (multiplayerState.isHost) {
+    cachedGameState.guestLastHeartbeat = Date.now();
+  } else {
+    cachedGameState.hostLastHeartbeat = Date.now();
+  }
 
   // ── 对手离开/回来检测（在 gameState 空检查之前，确保即使未初始化也能响应）──
   const imHost = multiplayerState.isHost;
@@ -704,6 +740,7 @@ async function continueWaiting() {
       const gs = { ...room.game_state };
       gs.hostActive = true;
       gs.guestActive = false;
+      gs.lastHeartbeat = Date.now();
       // 保留 player2Joined=true，保留棋盘状态
       delete gs.restartRequest;
       supabaseClient
@@ -732,7 +769,8 @@ async function syncGameState() {
     positionsSwapped: gameState.positionsSwapped || false,
     player2Joined: true,
     hostActive: true,
-    guestActive: true
+    guestActive: true,
+    lastHeartbeat: Date.now()
   };
 
   // 1) 通过 Broadcast 实时发送给对手（不回传给自己）
@@ -1064,37 +1102,44 @@ async function leaveRoom() {
 // 同步离开状态（浏览器关闭时使用，同步请求）
 function leaveRoomSync() {
   if (!multiplayerState.isOnline || !multiplayerState.roomId) return;
-  if (!cachedGameState) return;
 
   const roomId = multiplayerState.roomId;
+  const now = Date.now();
 
   if (multiplayerState.isHost) {
     // 房主关闭浏览器：直接删除房间
-    fetch(`${SUPABASE_URL}/rest/v1/rooms?id=eq.${roomId}`, {
-      method: 'DELETE',
-      headers: {
-        'apikey': SUPABASE_KEY,
-        'Authorization': `Bearer ${SUPABASE_KEY}`
-      },
-      keepalive: true
-    }).catch(() => {});
-  } else {
+    try {
+      fetch(`${SUPABASE_URL}/rest/v1/rooms?id=eq.${roomId}`, {
+        method: 'DELETE',
+        headers: {
+          'apikey': SUPABASE_KEY,
+          'Authorization': `Bearer ${SUPABASE_KEY}`
+        },
+        keepalive: true
+      }).catch(() => {});
+    } catch (_) {}
+  } else if (cachedGameState) {
     // 加入者关闭浏览器：只标记自己离开
-    const stateToSend = { ...cachedGameState, guestActive: false };
+    const stateToSend = { ...cachedGameState, guestActive: false, lastHeartbeat: now };
     delete stateToSend.restartRequest;
 
-    fetch(`${SUPABASE_URL}/rest/v1/rooms?id=eq.${roomId}`, {
-      method: 'PATCH',
-      headers: {
-        'Content-Type': 'application/json',
-        'apikey': SUPABASE_KEY,
-        'Authorization': `Bearer ${SUPABASE_KEY}`,
-        'Prefer': 'return=minimal'
-      },
-      body: JSON.stringify({ game_state: stateToSend }),
-      keepalive: true
-    }).catch(() => {});
+    try {
+      fetch(`${SUPABASE_URL}/rest/v1/rooms?id=eq.${roomId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': SUPABASE_KEY,
+          'Authorization': `Bearer ${SUPABASE_KEY}`,
+          'Prefer': 'return=minimal'
+        },
+        body: JSON.stringify({ game_state: stateToSend }),
+        keepalive: true
+      }).catch(() => {}) ;
+    } catch (_) {}
   }
+
+  // 清除 localStorage 中的房间状态
+  clearSavedRoomState();
 }
 
 // 重新声明在线状态（从后台切回时使用）
@@ -1102,9 +1147,10 @@ function reassertActive() {
   if (!multiplayerState.isOnline || !multiplayerState.roomId || !cachedGameState) return;
 
   const field = multiplayerState.isHost ? 'hostActive' : 'guestActive';
-  if (cachedGameState[field]) return; // 已经是 active，无需更新
-
+  const now = Date.now();
   cachedGameState[field] = true;
+  cachedGameState.lastHeartbeat = now;
+
   fetch(`${SUPABASE_URL}/rest/v1/rooms?id=eq.${multiplayerState.roomId}`, {
     method: 'PATCH',
     headers: {
@@ -1113,13 +1159,239 @@ function reassertActive() {
       'Authorization': `Bearer ${SUPABASE_KEY}`,
       'Prefer': 'return=minimal'
     },
-    body: JSON.stringify({ game_state: { ...cachedGameState, [field]: true } }),
+    body: JSON.stringify({ game_state: cachedGameState }),
     keepalive: true
   }).catch(() => {});
+
+  // 重新启动心跳
+  startHeartbeat();
+}
+
+// ============ 心跳机制 ============
+
+function startHeartbeat() {
+  stopHeartbeat();
+  heartbeatTimer = setInterval(() => {
+    if (!multiplayerState.isOnline || !multiplayerState.roomId || !cachedGameState) {
+      stopHeartbeat();
+      return;
+    }
+
+    const now = Date.now();
+    const field = multiplayerState.isHost ? 'hostActive' : 'guestActive';
+    cachedGameState[field] = true;
+    cachedGameState.lastHeartbeat = now;
+
+    // 发送心跳到数据库
+    fetch(`${SUPABASE_URL}/rest/v1/rooms?id=eq.${multiplayerState.roomId}`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': SUPABASE_KEY,
+        'Authorization': `Bearer ${SUPABASE_KEY}`,
+        'Prefer': 'return=minimal'
+      },
+      body: JSON.stringify({ game_state: cachedGameState })
+    }).catch(() => {});
+
+    // 检查对方心跳是否超时
+    if (cachedGameState.player2Joined) {
+      const opponentHeartbeat = multiplayerState.isHost
+        ? cachedGameState.guestLastHeartbeat
+        : cachedGameState.hostLastHeartbeat;
+
+      if (opponentHeartbeat && (now - opponentHeartbeat > HEARTBEAT_TIMEOUT)) {
+        // 对方心跳超时，标记离线
+        const opponentField = multiplayerState.isHost ? 'guestActive' : 'hostActive';
+        cachedGameState[opponentField] = false;
+        showToast('对手已离线');
+        showOpponentLeftModal();
+      }
+    }
+  }, HEARTBEAT_INTERVAL);
+}
+
+function stopHeartbeat() {
+  if (heartbeatTimer) {
+    clearInterval(heartbeatTimer);
+    heartbeatTimer = null;
+  }
+}
+
+// ============ localStorage 房间状态持久化 ============
+
+const ROOM_STATE_KEY = 'levesper_room_state';
+
+function saveRoomState() {
+  if (!multiplayerState.isOnline || !multiplayerState.roomId) {
+    clearSavedRoomState();
+    return;
+  }
+
+  const state = {
+    roomId: multiplayerState.roomId,
+    roomName: multiplayerState.roomName,
+    isHost: multiplayerState.isHost,
+    myPlayerIndex: multiplayerState.myPlayerIndex,
+    savedAt: Date.now()
+  };
+
+  try {
+    localStorage.setItem(ROOM_STATE_KEY, JSON.stringify(state));
+  } catch (_) {}
+}
+
+function loadSavedRoomState() {
+  try {
+    const saved = localStorage.getItem(ROOM_STATE_KEY);
+    if (!saved) return null;
+
+    const state = JSON.parse(saved);
+    // 超过 5 分钟的保存状态无效
+    if (Date.now() - state.savedAt > 5 * 60 * 1000) {
+      clearSavedRoomState();
+      return null;
+    }
+    return state;
+  } catch (_) {
+    return null;
+  }
+}
+
+function clearSavedRoomState() {
+  try {
+    localStorage.removeItem(ROOM_STATE_KEY);
+  } catch (_) {}
+}
+
+// ============ 断线重连 ============
+
+async function attemptReconnect() {
+  const saved = loadSavedRoomState();
+  if (!saved) return false;
+  if (!supabaseReady || !supabaseClient) return false;
+
+  console.log('尝试断线重连:', saved.roomName);
+
+  try {
+    const { data: room, error } = await supabaseClient
+      .from('rooms')
+      .select('*')
+      .eq('id', saved.roomId)
+      .single();
+
+    if (error || !room) {
+      console.log('房间已不存在，无法重连');
+      clearSavedRoomState();
+      return false;
+    }
+
+    const gs = room.game_state || {};
+
+    // 检查房间是否还有效
+    if (gs.gameOver) {
+      console.log('游戏已结束，无法重连');
+      clearSavedRoomState();
+      return false;
+    }
+
+    // 恢复在线状态
+    const field = saved.isHost ? 'hostActive' : 'guestActive';
+    gs[field] = true;
+    gs.lastHeartbeat = Date.now();
+
+    // 重新加入 Presence
+    multiplayerState = {
+      isOnline: true,
+      isHost: saved.isHost,
+      myPlayerIndex: saved.myPlayerIndex,
+      roomName: saved.roomName,
+      roomId: saved.roomId,
+      subscription: null,
+      listSubscription: multiplayerState.listSubscription
+    };
+
+    // 更新数据库
+    await supabaseClient
+      .from('rooms')
+      .update({ game_state: gs })
+      .eq('id', saved.roomId);
+
+    // 订阅房间
+    subscribeToRoom(saved.roomId);
+
+    // 开始游戏
+    startGame(gs, true);
+
+    showToast('重连成功！');
+
+    // 保存状态
+    saveRoomState();
+
+    // 启动心跳
+    startHeartbeat();
+
+    return true;
+  } catch (err) {
+    console.error('重连失败:', err);
+    clearSavedRoomState();
+    return false;
+  }
+}
+
+// ============ 主动房间清理 ============
+
+async function cleanupStaleRooms() {
+  if (!supabaseReady || !supabaseClient) return;
+
+  try {
+    const { data: rooms } = await supabaseClient
+      .from('rooms')
+      .select('id, game_state, created_at')
+      .order('created_at', { ascending: false })
+      .limit(100);
+
+    if (!rooms) return;
+
+    const now = Date.now();
+    const ROOM_EXPIRE_MS = 5 * 60 * 1000;
+    const staleIds = [];
+
+    for (const room of rooms) {
+      const gs = room.game_state || {};
+      const age = now - new Date(room.created_at).getTime();
+
+      const bothInactive = gs.hostActive === false && gs.guestActive === false;
+      const hostLeft = gs.hostActive === false && gs.player2Joined;
+      const noActiveField = gs.hostActive === undefined && gs.guestActive === undefined && age > ROOM_EXPIRE_MS;
+      const waitingExpired = !gs.player2Joined && gs.hostActive !== false && age > ROOM_EXPIRE_MS;
+
+      // 心跳超时检测
+      const lastHeartbeat = gs.lastHeartbeat || 0;
+      const heartbeatExpired = gs.player2Joined && (now - lastHeartbeat > 60000); // 60秒无心跳
+
+      if (bothInactive || hostLeft || noActiveField || waitingExpired || heartbeatExpired) {
+        staleIds.push(room.id);
+      }
+    }
+
+    if (staleIds.length > 0) {
+      console.log(`清理 ${staleIds.length} 个过期房间`);
+      for (const id of staleIds) {
+        supabaseClient.from('rooms').delete().eq('id', id).then(() => {}).catch(() => {});
+      }
+    }
+  } catch (_) {}
 }
 
 // 返回大厅（UI 层面）
 function returnToLobby() {
+  // 停止心跳
+  stopHeartbeat();
+
+  // 清除保存的房间状态
+  clearSavedRoomState();
+
   try { unsubscribeRoomList(); } catch (_) {}
   try { subscribeRoomList(); } catch (_) {}
   try { fetchRoomList(); } catch (_) {}
@@ -1159,11 +1431,11 @@ document.addEventListener('visibilitychange', () => {
   if (!multiplayerState.isOnline) return;
 
   if (document.visibilityState === 'hidden') {
-    // 防抖：隐藏超过 30 秒才标记离开（避免切换应用误触发）
+    // 防抖：隐藏超过 10 秒才标记离开（避免切换应用误触发）
     leaveTimer = setTimeout(() => {
       leaveRoomSync();
       leaveTimer = null;
-    }, 30000);
+    }, 10000);
   } else {
     // 切回前台：取消离开计时器，重新声明在线
     if (leaveTimer) {
@@ -1173,6 +1445,13 @@ document.addEventListener('visibilitychange', () => {
     reassertActive();
   }
 });
+
+// 定期清理过期房间（每 2 分钟）
+setInterval(() => {
+  if (supabaseReady) {
+    cleanupStaleRooms();
+  }
+}, 120000);
 
 // 内部：切换UI + 异步清理数据库（不阻塞UI）
 function _leaveRoomImmediate() {
@@ -1300,7 +1579,7 @@ async function notifyRestart() {
   try {
     const { error } = await supabaseClient
       .from('rooms')
-      .update({ game_state: { ...gameState, restartRequest: multiplayerState.myPlayerIndex, player2Joined: true, hostActive: true, guestActive: true } })
+      .update({ game_state: { ...gameState, restartRequest: multiplayerState.myPlayerIndex, player2Joined: true, hostActive: true, guestActive: true, lastHeartbeat: Date.now() } })
       .eq('id', multiplayerState.roomId);
 
     if (error) console.error('发送再来一局通知失败:', error);

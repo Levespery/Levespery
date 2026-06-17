@@ -365,7 +365,7 @@ const AI = {
     const player = gameState.players[playerIndex];
     const opponentIndex = playerIndex === 0 ? 1 : 0;
     const opponent = gameState.players[opponentIndex];
-    const goalRow = playerIndex === 0 ? 8 : 0;
+    const goalRow = getGoalRow(playerIndex);
 
     const visited = new Set();
     const queue = [{ row: player.row, col: player.col, path: [] }];

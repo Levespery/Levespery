@@ -32,14 +32,53 @@ let gameState = {
   walls: [],
   gameOver: false,
   hoverWall: null,
-  lastMoveBy: -1  // 记录最后一步是谁下的（用于同步悔棋按钮）
+  lastMoveBy: -1,  // 记录最后一步是谁下的（用于同步悔棋按钮）
+  positionsSwapped: false // AI/本地再来一局时交换起始位置和目标行
 };
 
 // 悔棋历史记录
 let moveHistory = [];
 
+// 移动锁 - 防止在线模式下快速连续点击导致棋子重叠
+let isMoving = false;
+
 // 画布和上下文
 let canvas, ctx;
+
+// 视角翻转 - 当玩家是白色方（playerIndex=1）时翻转棋盘，使其从自己的视角看（棋子向上走）
+let perspectiveFlipped = false;
+
+// 将逻辑行号转换为视觉行号
+function visualRow(logicalRow) {
+  return perspectiveFlipped ? (GRID_SIZE - 1 - logicalRow) : logicalRow;
+}
+
+// 将逻辑列号转换为视觉列号
+function visualCol(logicalCol) {
+  return perspectiveFlipped ? (GRID_SIZE - 1 - logicalCol) : logicalCol;
+}
+
+// 将视觉行号转换为逻辑行号
+function logicalRow(visRow) {
+  return perspectiveFlipped ? (GRID_SIZE - 1 - visRow) : visRow;
+}
+
+// 将视觉列号转换为逻辑列号
+function logicalCol(visCol) {
+  return perspectiveFlipped ? (GRID_SIZE - 1 - visCol) : visCol;
+}
+
+// 获取玩家的目标行（考虑 positionsSwapped）
+function getGoalRow(playerIndex) {
+  const normalGoal = playerIndex === 0 ? 8 : 0;
+  return gameState.positionsSwapped ? (8 - normalGoal) : normalGoal;
+}
+
+// 获取玩家的起始行（考虑 positionsSwapped）
+function getStartRow(playerIndex) {
+  const normalStart = playerIndex === 0 ? 0 : 8;
+  return gameState.positionsSwapped ? (8 - normalStart) : normalStart;
+}
 
 // 初始化游戏
 function init() {
@@ -128,10 +167,14 @@ function handleMouseMove(e) {
 
 // 处理移动点击
 function handleMoveClick(x, y) {
-  const col = Math.floor((x - GRID_OFFSET) / CELL_SIZE);
-  const row = Math.floor((y - GRID_OFFSET) / CELL_SIZE);
+  const visCol = Math.floor((x - GRID_OFFSET) / CELL_SIZE);
+  const visRow = Math.floor((y - GRID_OFFSET) / CELL_SIZE);
 
-  if (row < 0 || row >= GRID_SIZE || col < 0 || col >= GRID_SIZE) return;
+  if (visRow < 0 || visRow >= GRID_SIZE || visCol < 0 || visCol >= GRID_SIZE) return;
+
+  // 将视觉坐标转换为逻辑坐标
+  const row = logicalRow(visRow);
+  const col = logicalCol(visCol);
 
   const player = gameState.players[gameState.currentPlayer];
   const dr = row - player.row;
@@ -272,19 +315,24 @@ function getWallFromPosition(x, y, threshold, orientation) {
   const relX = x - GRID_OFFSET;
   const relY = y - GRID_OFFSET;
 
-  // 边界检查
-  if (relX < 0 || relX > GRID_SIZE * CELL_SIZE || relY < 0 || relY > GRID_SIZE * CELL_SIZE) {
+  // 边界检查 - 使用画布实际尺寸，允许扩展区域
+  const maxRelX = GRID_SIZE * CELL_SIZE;
+  const maxRelY = canvas ? canvas.height - GRID_OFFSET : GRID_SIZE * CELL_SIZE;
+  if (relX < 0 || relX > maxRelX || relY < 0 || relY > maxRelY) {
     return null;
   }
 
   // 只检测水平墙
   if (orientation === null || orientation === 'h') {
-    for (let row = 0; row < GRID_SIZE - 1; row++) {
-      const edgeY = (row + 1) * CELL_SIZE;
+    for (let visRow = 0; visRow < GRID_SIZE - 1; visRow++) {
+      const edgeY = (visRow + 1) * CELL_SIZE;
       if (Math.abs(relY - edgeY) < CELL_SIZE * threshold) {
-        const col = Math.floor(relX / CELL_SIZE);
-        if (col >= 0 && col < GRID_SIZE - 1) {
-          return { row: row, col: col, orientation: 'h' };
+        const visCol = Math.floor(relX / CELL_SIZE);
+        if (visCol >= 0 && visCol < GRID_SIZE - 1) {
+          // 将视觉坐标转换为逻辑坐标
+          const logicalWallRow = logicalRow(visRow);
+          const logicalWallCol = logicalCol(visCol);
+          return { row: logicalWallRow, col: logicalWallCol, orientation: 'h' };
         }
       }
     }
@@ -292,12 +340,15 @@ function getWallFromPosition(x, y, threshold, orientation) {
 
   // 只检测垂直墙
   if (orientation === null || orientation === 'v') {
-    for (let col = 0; col < GRID_SIZE - 1; col++) {
-      const edgeX = (col + 1) * CELL_SIZE;
+    for (let visCol = 0; visCol < GRID_SIZE - 1; visCol++) {
+      const edgeX = (visCol + 1) * CELL_SIZE;
       if (Math.abs(relX - edgeX) < CELL_SIZE * threshold) {
-        const row = Math.floor(relY / CELL_SIZE);
-        if (row >= 0 && row < GRID_SIZE - 1) {
-          return { row: row, col: col, orientation: 'v' };
+        const visRow = Math.floor(relY / CELL_SIZE);
+        if (visRow >= 0 && visRow < GRID_SIZE - 1) {
+          // 将视觉坐标转换为逻辑坐标
+          const logicalWallRow = logicalRow(visRow);
+          const logicalWallCol = logicalCol(visCol);
+          return { row: logicalWallRow, col: logicalWallCol, orientation: 'v' };
         }
       }
     }
@@ -379,7 +430,7 @@ function wouldBlockCompletely(wall) {
 // 检查玩家是否能到达目标（BFS）
 function canReachGoal(playerIndex) {
   const player = gameState.players[playerIndex];
-  const goalRow = playerIndex === 0 ? 8 : 0;
+  const goalRow = getGoalRow(playerIndex);
 
   const visited = new Set();
   const queue = [{ row: player.row, col: player.col }];
@@ -412,7 +463,7 @@ function canReachGoal(playerIndex) {
 // 检查是否获胜
 function checkWin() {
   const player = gameState.players[gameState.currentPlayer];
-  const goalRow = gameState.currentPlayer === 0 ? 8 : 0;
+  const goalRow = getGoalRow(gameState.currentPlayer);
   const isWin = player.row === goalRow;
   console.log(`检查胜利: 玩家${gameState.currentPlayer}, 位置:(${player.row},${player.col}), 目标行:${goalRow}, 胜利:${isWin}`);
   return isWin;
@@ -591,16 +642,18 @@ function undoMove() {
 
 // 重置游戏
 function resetGame() {
+  const swapped = gameState.positionsSwapped || false;
   gameState = {
     players: [
-      { row: 0, col: 4, walls: 10 },
-      { row: 8, col: 4, walls: 10 }
+      { row: swapped ? 8 : 0, col: 4, walls: 10 },
+      { row: swapped ? 0 : 8, col: 4, walls: 10 }
     ],
     currentPlayer: 0,
     walls: [],
     gameOver: false,
     hoverWall: null,
-    lastMoveBy: -1
+    lastMoveBy: -1,
+    positionsSwapped: swapped
   };
 
   moveHistory = [];
@@ -643,10 +696,10 @@ function drawBoard() {
   ctx.fillStyle = COLORS.board;
   ctx.fillRect(GRID_OFFSET - 10, GRID_OFFSET - 10, GRID_SIZE * CELL_SIZE + 20, GRID_SIZE * CELL_SIZE + 20);
 
-  // 绘制当前玩家高亮行
-  const highlightRow = gameState.currentPlayer === 0 ? 0 : GRID_SIZE - 1;
+  // 绘制当前玩家高亮行（起始行位置）
+  const highlightVisRow = visualRow(getStartRow(gameState.currentPlayer));
   ctx.fillStyle = COLORS.turnHighlight;
-  ctx.fillRect(GRID_OFFSET, GRID_OFFSET + highlightRow * CELL_SIZE, GRID_SIZE * CELL_SIZE, CELL_SIZE);
+  ctx.fillRect(GRID_OFFSET, GRID_OFFSET + highlightVisRow * CELL_SIZE, GRID_SIZE * CELL_SIZE, CELL_SIZE);
 
   // 绘制网格线
   ctx.strokeStyle = COLORS.grid;
@@ -666,12 +719,14 @@ function drawBoard() {
     ctx.stroke();
   }
 
-  // 绘制目标区域（灰色底线）
+  // 绘制目标区域（灰色底线）- 使用视觉坐标
+  const goalVisRow0 = visualRow(getGoalRow(0));  // 玩家0的目标行在视觉上的位置
+  const goalVisRow8 = visualRow(getGoalRow(1));  // 玩家1的目标行在视觉上的位置
   ctx.fillStyle = COLORS.goal;
-  ctx.fillRect(GRID_OFFSET, GRID_OFFSET, GRID_SIZE * CELL_SIZE, CELL_SIZE);
+  ctx.fillRect(GRID_OFFSET, GRID_OFFSET + goalVisRow0 * CELL_SIZE, GRID_SIZE * CELL_SIZE, CELL_SIZE);
 
   ctx.fillStyle = COLORS.goal;
-  ctx.fillRect(GRID_OFFSET, GRID_OFFSET + (GRID_SIZE - 1) * CELL_SIZE, GRID_SIZE * CELL_SIZE, CELL_SIZE);
+  ctx.fillRect(GRID_OFFSET, GRID_OFFSET + goalVisRow8 * CELL_SIZE, GRID_SIZE * CELL_SIZE, CELL_SIZE);
 }
 
 // 绘制圆角墙壁
@@ -708,14 +763,16 @@ function drawRoundedWall(x, y, width, height, isPlayer1, isHover = false) {
 function drawWalls() {
   for (const wall of gameState.walls) {
     const isPlayer1 = wall.player === 0;
+    const vRow = visualRow(wall.row);
+    const vCol = visualCol(wall.col);
 
     if (wall.orientation === 'h') {
-      const x = GRID_OFFSET + wall.col * CELL_SIZE;
-      const y = GRID_OFFSET + (wall.row + 1) * CELL_SIZE - WALL_THICKNESS / 2;
+      const x = GRID_OFFSET + vCol * CELL_SIZE;
+      const y = GRID_OFFSET + (vRow + 1) * CELL_SIZE - WALL_THICKNESS / 2;
       drawRoundedWall(x, y, CELL_SIZE * 2, WALL_THICKNESS, isPlayer1);
     } else {
-      const x = GRID_OFFSET + (wall.col + 1) * CELL_SIZE - WALL_THICKNESS / 2;
-      const y = GRID_OFFSET + wall.row * CELL_SIZE;
+      const x = GRID_OFFSET + (vCol + 1) * CELL_SIZE - WALL_THICKNESS / 2;
+      const y = GRID_OFFSET + vRow * CELL_SIZE;
       drawRoundedWall(x, y, WALL_THICKNESS, CELL_SIZE * 2, isPlayer1);
     }
   }
@@ -727,14 +784,16 @@ function drawHoverWall() {
 
   const wall = gameState.hoverWall;
   const isPlayer1 = gameState.currentPlayer === 0;
+  const vRow = visualRow(wall.row);
+  const vCol = visualCol(wall.col);
 
   if (wall.orientation === 'h') {
-    const x = GRID_OFFSET + wall.col * CELL_SIZE;
-    const y = GRID_OFFSET + (wall.row + 1) * CELL_SIZE - WALL_THICKNESS / 2;
+    const x = GRID_OFFSET + vCol * CELL_SIZE;
+    const y = GRID_OFFSET + (vRow + 1) * CELL_SIZE - WALL_THICKNESS / 2;
     drawRoundedWall(x, y, CELL_SIZE * 2, WALL_THICKNESS, isPlayer1, true);
   } else {
-    const x = GRID_OFFSET + (wall.col + 1) * CELL_SIZE - WALL_THICKNESS / 2;
-    const y = GRID_OFFSET + wall.row * CELL_SIZE;
+    const x = GRID_OFFSET + (vCol + 1) * CELL_SIZE - WALL_THICKNESS / 2;
+    const y = GRID_OFFSET + vRow * CELL_SIZE;
     drawRoundedWall(x, y, WALL_THICKNESS, CELL_SIZE * 2, isPlayer1, true);
   }
 }
@@ -763,8 +822,8 @@ function drawValidMoves() {
           // 检查跳跃位置是否有效且没有被阻挡
           if (jumpRow >= 0 && jumpRow < GRID_SIZE && jumpCol >= 0 && jumpCol < GRID_SIZE) {
             if (!isBlocked(newRow, newCol, jumpRow, jumpCol)) {
-              const x = GRID_OFFSET + jumpCol * CELL_SIZE + CELL_SIZE / 2;
-              const y = GRID_OFFSET + jumpRow * CELL_SIZE + CELL_SIZE / 2;
+              const x = GRID_OFFSET + visualCol(jumpCol) * CELL_SIZE + CELL_SIZE / 2;
+              const y = GRID_OFFSET + visualRow(jumpRow) * CELL_SIZE + CELL_SIZE / 2;
               ctx.beginPath();
               ctx.arc(x, y, 8, 0, Math.PI * 2);
               ctx.fillStyle = COLORS.validMove;
@@ -773,8 +832,8 @@ function drawValidMoves() {
           }
         } else {
           // 普通移动位置
-          const x = GRID_OFFSET + newCol * CELL_SIZE + CELL_SIZE / 2;
-          const y = GRID_OFFSET + newRow * CELL_SIZE + CELL_SIZE / 2;
+          const x = GRID_OFFSET + visualCol(newCol) * CELL_SIZE + CELL_SIZE / 2;
+          const y = GRID_OFFSET + visualRow(newRow) * CELL_SIZE + CELL_SIZE / 2;
           ctx.beginPath();
           ctx.arc(x, y, 8, 0, Math.PI * 2);
           ctx.fillStyle = COLORS.validMove;
@@ -789,8 +848,8 @@ function drawValidMoves() {
 function drawPlayers() {
   for (let i = 0; i < 2; i++) {
     const player = gameState.players[i];
-    const x = GRID_OFFSET + player.col * CELL_SIZE + CELL_SIZE / 2;
-    const y = GRID_OFFSET + player.row * CELL_SIZE + CELL_SIZE / 2;
+    const x = GRID_OFFSET + visualCol(player.col) * CELL_SIZE + CELL_SIZE / 2;
+    const y = GRID_OFFSET + visualRow(player.row) * CELL_SIZE + CELL_SIZE / 2;
 
     // 绘制阴影
     ctx.beginPath();

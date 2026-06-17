@@ -72,14 +72,18 @@ async function createRoom() {
   const roomCode = generateRoomCode();
   console.log('创建房间:', roomCode);
 
+  // 随机分配颜色：hostColor 为房主的棋子颜色 (0=黑, 1=白)
+  const hostColor = Math.random() < 0.5 ? 0 : 1;
+
   const initialGameState = {
     players: [
-      { row: 0, col: 4, walls: 10 },
-      { row: 8, col: 4, walls: 10 }
+      { row: hostColor === 0 ? 0 : 8, col: 4, walls: 10 },
+      { row: hostColor === 0 ? 8 : 0, col: 4, walls: 10 }
     ],
     currentPlayer: 0,
     walls: [],
-    gameOver: false
+    gameOver: false,
+    hostColor: hostColor
   };
 
   try {
@@ -102,7 +106,7 @@ async function createRoom() {
     multiplayerState = {
       isOnline: true,
       isHost: true,
-      myPlayerIndex: 0,
+      myPlayerIndex: hostColor,
       roomCode: roomCode,
       roomId: data.id,
       subscription: null
@@ -149,10 +153,14 @@ async function joinRoom() {
 
     console.log('找到房间:', data);
 
+    // 根据 hostColor 计算加入者的颜色
+    const hostColor = data.game_state.hostColor !== undefined ? data.game_state.hostColor : 0;
+    const joinerColor = 1 - hostColor;
+
     multiplayerState = {
       isOnline: true,
       isHost: false,
-      myPlayerIndex: 1,
+      myPlayerIndex: joinerColor,
       roomCode: roomCode,
       roomId: data.id,
       subscription: null
@@ -224,6 +232,17 @@ function handleGameStateUpdate(newState) {
     const restartBtn = document.getElementById('btn-restart');
     if (restartBtn) restartBtn.textContent = '再来一局';
 
+    // 再来一局时更新颜色分配
+    if (newState.hostColor !== undefined) {
+      const myColor = multiplayerState.isHost ? newState.hostColor : (1 - newState.hostColor);
+      multiplayerState.myPlayerIndex = myColor;
+      perspectiveFlipped = (myColor === 1);
+      document.getElementById('player-role').textContent =
+        `你是${myColor === 0 ? '黑' : '白'}方`;
+      document.getElementById('player-role').style.color =
+        myColor === 0 ? '#1a1a1a' : '#999';
+    }
+
     // 对方同意后播放开局音效
     SoundManager.playStartSound();
   }
@@ -237,6 +256,9 @@ function handleGameStateUpdate(newState) {
   gameState.walls = newState.walls;
   gameState.gameOver = newState.gameOver;
   gameState.lastMoveBy = newState.lastMoveBy !== undefined ? newState.lastMoveBy : -1;
+  if (newState.positionsSwapped !== undefined) {
+    gameState.positionsSwapped = newState.positionsSwapped;
+  }
 
   // 对方悔棋提示
   if (opponentUndone) {
@@ -289,7 +311,9 @@ async function syncGameState() {
       currentPlayer: gameState.currentPlayer,
       walls: gameState.walls,
       gameOver: gameState.gameOver,
-      lastMoveBy: gameState.lastMoveBy
+      lastMoveBy: gameState.lastMoveBy,
+      hostColor: multiplayerState.isHost ? multiplayerState.myPlayerIndex : (1 - multiplayerState.myPlayerIndex),
+      positionsSwapped: gameState.positionsSwapped || false
     };
 
     const { error } = await supabaseClient
@@ -338,6 +362,9 @@ function startGame(initialState, isOnline) {
       `你是${multiplayerState.myPlayerIndex === 0 ? '黑' : '白'}方`;
     document.getElementById('player-role').style.color =
       multiplayerState.myPlayerIndex === 0 ? '#1a1a1a' : '#999';
+    perspectiveFlipped = (multiplayerState.myPlayerIndex === 1);
+  } else {
+    perspectiveFlipped = false;
   }
 
   if (initialState) {
@@ -375,8 +402,14 @@ function startGame(initialState, isOnline) {
 }
 
 // 处理在线模式点击
-function handleOnlineClick(e) {
+async function handleOnlineClick(e) {
   if (gameState.gameOver) return;
+
+  // 检查移动锁 - 防止快速连续点击导致棋子重叠
+  if (isMoving) {
+    console.log('移动进行中，忽略点击');
+    return;
+  }
 
   // 检查是否轮到自己
   if (gameState.currentPlayer !== multiplayerState.myPlayerIndex) {
@@ -387,19 +420,27 @@ function handleOnlineClick(e) {
   const x = (e.clientX - rect.left) * (canvas.width / rect.width);
   const y = (e.clientY - rect.top) * (canvas.height / rect.height);
 
-  // 电脑端：先尝试放置墙壁，再尝试移动
-  if (!isMobileDevice()) {
-    const wall = getWallFromClick(x, y);
-    if (wall) {
-      handleWallClick(wall);
-      syncGameState();
-      return;
-    }
-  }
+  // 设置移动锁
+  isMoving = true;
 
-  // 移动棋子
-  handleMoveClick(x, y);
-  syncGameState();
+  try {
+    // 电脑端：先尝试放置墙壁，再尝试移动
+    if (!isMobileDevice()) {
+      const wall = getWallFromClick(x, y);
+      if (wall) {
+        handleWallClick(wall);
+        await syncGameState();
+        return;
+      }
+    }
+
+    // 移动棋子
+    handleMoveClick(x, y);
+    await syncGameState();
+  } finally {
+    // 释放移动锁
+    isMoving = false;
+  }
 }
 
 // 本地双人对战
@@ -471,6 +512,9 @@ function startAIPlay() {
     wallSelector.style.display = 'flex';
   }
 
+  // 重置视角和位置交换状态
+  perspectiveFlipped = false;
+
   // 初始化游戏
   canvas = document.getElementById('gameCanvas');
   ctx = canvas.getContext('2d');
@@ -487,7 +531,8 @@ function startAIPlay() {
     currentPlayer: 0,
     walls: [],
     gameOver: false,
-    hoverWall: null
+    hoverWall: null,
+    positionsSwapped: false
   };
 
   moveHistory = [];
@@ -584,7 +629,18 @@ function requestRestart() {
     if ((notify && notify.style.display === 'block') || restartRequested) {
       notify.style.display = 'none';
       restartRequested = false;
+
+      // 在线模式：交换颜色和视角
+      multiplayerState.myPlayerIndex = 1 - multiplayerState.myPlayerIndex;
+      perspectiveFlipped = (multiplayerState.myPlayerIndex === 1);
+      document.getElementById('player-role').textContent =
+        `你是${multiplayerState.myPlayerIndex === 0 ? '黑' : '白'}方`;
+      document.getElementById('player-role').style.color =
+        multiplayerState.myPlayerIndex === 0 ? '#1a1a1a' : '#999';
+
+      gameState.positionsSwapped = !gameState.positionsSwapped;
       resetGame();
+      syncGameState();
       SoundManager.playStartSound();
     } else {
       // 通知对方
@@ -593,6 +649,11 @@ function requestRestart() {
       document.getElementById('btn-restart').textContent = '等待对方确认...';
     }
   } else {
+    // 人机模式：切换起始位置和视角
+    if (aiMode) {
+      gameState.positionsSwapped = !gameState.positionsSwapped;
+      perspectiveFlipped = !perspectiveFlipped;
+    }
     resetGame();
     SoundManager.playStartSound();
   }

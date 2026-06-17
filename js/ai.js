@@ -142,6 +142,10 @@ const AI = {
     if (gameState.gameOver) return;
     if (gameState.currentPlayer !== 1) return; // AI 是玩家 2
 
+    // 防止重复调用
+    if (this._thinking) return;
+    this._thinking = true;
+
     console.log('AI 开始思考...');
 
     try {
@@ -149,9 +153,24 @@ const AI = {
       await this.sleep(400 + Math.random() * 500);
 
       // 再次检查状态（延迟期间可能已变化）
-      if (gameState.gameOver || gameState.currentPlayer !== 1) return;
+      if (gameState.gameOver || gameState.currentPlayer !== 1) {
+        this._thinking = false;
+        return;
+      }
+
+      // 设置安全超时：5秒后强制切换回合
+      const safetyTimer = setTimeout(() => {
+        if (this._thinking && gameState.currentPlayer === 1 && !gameState.gameOver) {
+          console.warn('AI 思考超时，强制切换回合');
+          this._thinking = false;
+          switchPlayer();
+          showUndoButton();
+          render();
+        }
+      }, 5000);
 
       const bestAction = this.evaluate();
+      clearTimeout(safetyTimer);
       console.log('AI 决定:', bestAction);
 
       if (bestAction) {
@@ -174,6 +193,8 @@ const AI = {
         showUndoButton();
         render();
       }
+    } finally {
+      this._thinking = false;
     }
   },
 

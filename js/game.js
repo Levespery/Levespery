@@ -116,6 +116,7 @@ function handleClick(e) {
     return;
   }
 
+  const prevPlayer = gameState.currentPlayer;
   const rect = canvas.getBoundingClientRect();
   const x = (e.clientX - rect.left) * (canvas.width / rect.width);
   const y = (e.clientY - rect.top) * (canvas.height / rect.height);
@@ -128,8 +129,8 @@ function handleClick(e) {
       if (multiplayerState.isOnline) {
         syncGameState();
       }
-      // 人机模式：玩家操作后触发 AI
-      if (aiMode && !gameState.gameOver) {
+      // 人机模式：只有玩家操作成功（回合切换了）才触发 AI
+      if (aiMode && !gameState.gameOver && gameState.currentPlayer !== prevPlayer) {
         setTimeout(() => AI.makeMove(), 100);
       }
       return;
@@ -141,8 +142,8 @@ function handleClick(e) {
   if (multiplayerState.isOnline) {
     syncGameState();
   }
-  // 人机模式：玩家操作后触发 AI
-  if (aiMode && !gameState.gameOver) {
+  // 人机模式：只有玩家操作成功（回合切换了）才触发 AI
+  if (aiMode && !gameState.gameOver && gameState.currentPlayer !== prevPlayer) {
     setTimeout(() => AI.makeMove(), 100);
   }
 }

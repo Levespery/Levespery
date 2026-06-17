@@ -276,13 +276,16 @@ async function joinRoomByName(roomId, roomName) {
       return;
     }
 
-    // 根据 hostColor 计算加入者的颜色
-    const hostColor = data.game_state.hostColor !== undefined ? data.game_state.hostColor : 0;
-    const joinerColor = 1 - hostColor;
+    // 判断是否为无房主的房间（房主已退出），新加入者成为新房主
+    const isHostless = data.game_state.hostActive === false;
+    const newHostColor = Math.random() < 0.5 ? 0 : 1;
+
+    // 根据是否接管房主分配颜色
+    const joinerColor = isHostless ? newHostColor : (1 - (data.game_state.hostColor !== undefined ? data.game_state.hostColor : 0));
 
     multiplayerState = {
       isOnline: true,
-      isHost: false,
+      isHost: isHostless,
       myPlayerIndex: joinerColor,
       roomName: roomName,
       roomId: data.id,
@@ -301,7 +304,7 @@ async function joinRoomByName(roomId, roomName) {
       gameOver: false,
       positionsSwapped: false,
       lastMoveBy: -1,
-      hostColor: data.game_state.hostColor,
+      hostColor: isHostless ? newHostColor : data.game_state.hostColor,
       player2Joined: true,
       guestActive: true,
       hostActive: true,
@@ -364,16 +367,17 @@ async function fetchRoomList() {
       const age = now - createdAt;
 
       // 判断房间是否需要清理：
-      // 1. 双方都不在线
-      // 2. 房主已离开（guest 留下的孤儿房间）
-      // 3. 无 active 字段的旧房间超过5分钟
-      // 4. 等待中的房间超过5分钟
+      // 1. 双方都不在线且已过期（超过5分钟）
+      // 2. 无 active 字段的旧房间超过5分钟
+      // 3. 等待中的房间超过5分钟（且不是房主退出的房间）
       const bothInactive = gs.hostActive === false && gs.guestActive === false;
-      const hostLeft = gs.hostActive === false && gs.player2Joined;
+      const hostLeftWithGuest = gs.hostActive === false && gs.player2Joined;
       const noActiveField = gs.hostActive === undefined && gs.guestActive === undefined && age > ROOM_EXPIRE_MS;
       const waitingExpired = !gs.player2Joined && gs.hostActive !== false && age > ROOM_EXPIRE_MS;
+      // 房主退出后无人加入的房间，超过10分钟才清理
+      const hostLeftWaiting = gs.hostActive === false && !gs.player2Joined && age > 1 * 60 * 1000;
 
-      if (bothInactive || hostLeft || noActiveField || waitingExpired) {
+      if ((bothInactive && age > ROOM_EXPIRE_MS) || hostLeftWithGuest || noActiveField || waitingExpired || hostLeftWaiting) {
         staleIds.push(room.id);
       } else {
         activeRooms.push(room);
@@ -1094,6 +1098,9 @@ function startLocalPlay() {
   canvas = document.getElementById('gameCanvas');
   ctx = canvas.getContext('2d');
 
+  canvas.removeEventListener('click', handleClick);
+  canvas.removeEventListener('click', handleOnlineClick);
+  canvas.removeEventListener('mousemove', handleMouseMove);
   canvas.addEventListener('click', handleClick);
   canvas.addEventListener('mousemove', handleMouseMove);
 
@@ -1152,6 +1159,9 @@ function startAIPlay() {
   canvas = document.getElementById('gameCanvas');
   ctx = canvas.getContext('2d');
 
+  canvas.removeEventListener('click', handleClick);
+  canvas.removeEventListener('click', handleOnlineClick);
+  canvas.removeEventListener('mousemove', handleMouseMove);
   canvas.addEventListener('click', handleClick);
   canvas.addEventListener('mousemove', handleMouseMove);
 
@@ -1244,14 +1254,24 @@ function leaveRoomSync() {
   const now = Date.now();
 
   if (multiplayerState.isHost) {
-    // 房主关闭浏览器：直接删除房间
+    // 房主关闭浏览器：重置房间为等待状态，不删除
+    const stateToSend = cachedGameState ? { ...cachedGameState } : {};
+    stateToSend.hostActive = false;
+    stateToSend.player2Joined = false;
+    stateToSend.guestActive = false;
+    stateToSend.lastHeartbeat = now;
+    delete stateToSend.restartRequest;
+
     try {
       fetch(`${SUPABASE_URL}/rest/v1/rooms?id=eq.${roomId}`, {
-        method: 'DELETE',
+        method: 'PATCH',
         headers: {
+          'Content-Type': 'application/json',
           'apikey': SUPABASE_KEY,
-          'Authorization': `Bearer ${SUPABASE_KEY}`
+          'Authorization': `Bearer ${SUPABASE_KEY}`,
+          'Prefer': 'return=minimal'
         },
+        body: JSON.stringify({ game_state: stateToSend }),
         keepalive: true
       }).catch(() => {});
     } catch (_) {}
@@ -1512,15 +1532,17 @@ async function cleanupStaleRooms() {
       const age = now - new Date(room.created_at).getTime();
 
       const bothInactive = gs.hostActive === false && gs.guestActive === false;
-      const hostLeft = gs.hostActive === false && gs.player2Joined;
+      const hostLeftWithGuest = gs.hostActive === false && gs.player2Joined;
       const noActiveField = gs.hostActive === undefined && gs.guestActive === undefined && age > ROOM_EXPIRE_MS;
       const waitingExpired = !gs.player2Joined && gs.hostActive !== false && age > ROOM_EXPIRE_MS;
+      // 房主退出后无人加入的房间，超过10分钟才清理
+      const hostLeftWaiting = gs.hostActive === false && !gs.player2Joined && age > 1 * 60 * 1000;
 
       // 心跳超时检测
       const lastHeartbeat = gs.lastHeartbeat || 0;
       const heartbeatExpired = gs.player2Joined && (now - lastHeartbeat > 60000); // 60秒无心跳
 
-      if (bothInactive || hostLeft || noActiveField || waitingExpired || heartbeatExpired) {
+      if ((bothInactive && age > ROOM_EXPIRE_MS) || hostLeftWithGuest || noActiveField || waitingExpired || hostLeftWaiting || heartbeatExpired) {
         staleIds.push(room.id);
       }
     }
@@ -1646,11 +1668,19 @@ function _leaveRoomImmediate() {
 
   // 异步清理数据库（不阻塞UI）
   if (isHost) {
-    // 房主离开：直接删除房间，guest 通过 DELETE 事件收到通知
-    _dbg('multiplayer.js:_leaveRoomImmediate', '房主DELETE房间', { roomId });
-    supabaseClient.from('rooms').delete().eq('id', roomId)
-      .then(() => _dbg('multiplayer.js:_leaveRoomImmediate', '房主DELETE完成', { roomId }))
-      .catch(err => { console.error('删除房间出错:', err); _dbg('multiplayer.js:_leaveRoomImmediate', '房主DELETE失败', { roomId, err: String(err) }); });
+    // 房主离开：不删除房间，重置为等待状态，让其他人可以加入当新房主
+    _dbg('multiplayer.js:_leaveRoomImmediate', '房主离开,重置房间', { roomId });
+    const gs = cachedGameState ? { ...cachedGameState } : {};
+    gs.hostActive = false;
+    gs.player2Joined = false;
+    gs.guestActive = false;
+    gs.lastHeartbeat = Date.now();
+    supabaseClient.from('rooms').update({ game_state: gs }).eq('id', roomId)
+      .then(() => {
+        _dbg('multiplayer.js:_leaveRoomImmediate', '房主离开重置完成', { roomId });
+        setTimeout(() => { try { fetchRoomList(); } catch (_) {} }, 500);
+      })
+      .catch(err => { console.error('房主离开重置出错:', err); _dbg('multiplayer.js:_leaveRoomImmediate', '房主离开重置失败', { roomId, err: String(err) }); });
   } else {
     // 加入者离开：直接用 cachedGameState 更新，避免 read-then-write 竞态
     const gs = cachedGameState ? { ...cachedGameState } : {};

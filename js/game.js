@@ -181,26 +181,43 @@ function handleMoveClick(x, y) {
   const dc = col - player.col;
   const distance = Math.abs(dr) + Math.abs(dc);
 
-  // 检查是否是有效移动（1格或跳跃）
   if (distance < 1 || distance > 2) return;
 
-  // 检查是否有墙阻挡
-  if (isBlocked(player.row, player.col, row, col)) return;
+  const opponentIndex = gameState.currentPlayer === 0 ? 1 : 0;
+  const opponent = gameState.players[opponentIndex];
 
-  // 如果是跳跃（距离2），检查是否跳过了对方棋子
-  const isJump = distance === 2;
-  if (isJump) {
+  // 不允许移动到对手所在的格子
+  if (row === opponent.row && col === opponent.col) return;
+
+  const absDr = Math.abs(dr);
+  const absDc = Math.abs(dc);
+  let isJump = false;
+
+  if (distance === 1) {
+    if (isBlocked(player.row, player.col, row, col)) return;
+  } else if ((absDr === 2 && absDc === 0) || (absDr === 0 && absDc === 2)) {
+    // 直线跳跃
     const midRow = player.row + dr / 2;
     const midCol = player.col + dc / 2;
-    const opponentIndex = gameState.currentPlayer === 0 ? 1 : 0;
-    const opponent = gameState.players[opponentIndex];
-
-    // 检查中间位置是否有对手棋子
     if (midRow !== opponent.row || midCol !== opponent.col) return;
-
-    // 检查跳跃路径是否被阻挡
     if (isBlocked(player.row, player.col, midRow, midCol)) return;
     if (isBlocked(midRow, midCol, row, col)) return;
+    isJump = true;
+  } else if (absDr === 1 && absDc === 1) {
+    // 斜向移动
+    const opponentAtRow = (player.row + dr === opponent.row && player.col === opponent.col);
+    const opponentAtCol = (player.row === opponent.row && player.col + dc === opponent.col);
+    if (!opponentAtRow && !opponentAtCol) return;
+    if (opponentAtRow) {
+      if (isBlocked(player.row, player.col, player.row + dr, player.col)) return;
+      if (isBlocked(player.row + dr, player.col, row, col)) return;
+    } else {
+      if (isBlocked(player.row, player.col, player.row, player.col + dc)) return;
+      if (isBlocked(player.row, player.col + dc, row, col)) return;
+    }
+    isJump = true;
+  } else {
+    return;
   }
 
   // 保存历史记录（用于悔棋）
@@ -813,6 +830,19 @@ function drawValidMoves() {
   const opponentIndex = gameState.currentPlayer === 0 ? 1 : 0;
   const opponent = gameState.players[opponentIndex];
   const directions = [[-1, 0], [1, 0], [0, -1], [0, 1]];
+  const drawn = new Set();
+
+  function drawDot(r, c) {
+    const key = `${r},${c}`;
+    if (drawn.has(key)) return;
+    drawn.add(key);
+    const x = GRID_OFFSET + visualCol(c) * CELL_SIZE + CELL_SIZE / 2;
+    const y = GRID_OFFSET + visualRow(r) * CELL_SIZE + CELL_SIZE / 2;
+    ctx.beginPath();
+    ctx.arc(x, y, 8, 0, Math.PI * 2);
+    ctx.fillStyle = COLORS.validMove;
+    ctx.fill();
+  }
 
   for (const [dr, dc] of directions) {
     const newRow = player.row + dr;
@@ -820,31 +850,28 @@ function drawValidMoves() {
 
     if (newRow >= 0 && newRow < GRID_SIZE && newCol >= 0 && newCol < GRID_SIZE) {
       if (!isBlocked(player.row, player.col, newRow, newCol)) {
-        // 检查这个位置是否有对手棋子
         if (newRow === opponent.row && newCol === opponent.col) {
           // 尝试跳跃
           const jumpRow = newRow + dr;
           const jumpCol = newCol + dc;
-
-          // 检查跳跃位置是否有效且没有被阻挡
           if (jumpRow >= 0 && jumpRow < GRID_SIZE && jumpCol >= 0 && jumpCol < GRID_SIZE) {
             if (!isBlocked(newRow, newCol, jumpRow, jumpCol)) {
-              const x = GRID_OFFSET + visualCol(jumpCol) * CELL_SIZE + CELL_SIZE / 2;
-              const y = GRID_OFFSET + visualRow(jumpRow) * CELL_SIZE + CELL_SIZE / 2;
-              ctx.beginPath();
-              ctx.arc(x, y, 8, 0, Math.PI * 2);
-              ctx.fillStyle = COLORS.validMove;
-              ctx.fill();
+              drawDot(jumpRow, jumpCol);
+            }
+          }
+          // 斜向移动
+          const perpDirs = dr !== 0 ? [[0, -1], [0, 1]] : [[-1, 0], [1, 0]];
+          for (const [pdr, pdc] of perpDirs) {
+            const diagRow = newRow + pdr;
+            const diagCol = newCol + pdc;
+            if (diagRow >= 0 && diagRow < GRID_SIZE && diagCol >= 0 && diagCol < GRID_SIZE) {
+              if (!isBlocked(newRow, newCol, diagRow, diagCol)) {
+                drawDot(diagRow, diagCol);
+              }
             }
           }
         } else {
-          // 普通移动位置
-          const x = GRID_OFFSET + visualCol(newCol) * CELL_SIZE + CELL_SIZE / 2;
-          const y = GRID_OFFSET + visualRow(newRow) * CELL_SIZE + CELL_SIZE / 2;
-          ctx.beginPath();
-          ctx.arc(x, y, 8, 0, Math.PI * 2);
-          ctx.fillStyle = COLORS.validMove;
-          ctx.fill();
+          drawDot(newRow, newCol);
         }
       }
     }

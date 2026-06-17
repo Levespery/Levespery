@@ -77,8 +77,8 @@ async function createRoom() {
 
   const initialGameState = {
     players: [
-      { row: hostColor === 0 ? 0 : 8, col: 4, walls: 10 },
-      { row: hostColor === 0 ? 8 : 0, col: 4, walls: 10 }
+      { row: 0, col: 4, walls: 10 },
+      { row: 8, col: 4, walls: 10 }
     ],
     currentPlayer: 0,
     walls: [],
@@ -236,7 +236,7 @@ function handleGameStateUpdate(newState) {
     if (newState.hostColor !== undefined) {
       const myColor = multiplayerState.isHost ? newState.hostColor : (1 - newState.hostColor);
       multiplayerState.myPlayerIndex = myColor;
-      perspectiveFlipped = (myColor === 0);
+      perspectiveFlipped = (myColor === 0) !== (newState.positionsSwapped || false);
       document.getElementById('player-role').textContent =
         `你是${myColor === 0 ? '黑' : '白'}方`;
       document.getElementById('player-role').style.color =
@@ -362,7 +362,7 @@ function startGame(initialState, isOnline) {
       `你是${multiplayerState.myPlayerIndex === 0 ? '黑' : '白'}方`;
     document.getElementById('player-role').style.color =
       multiplayerState.myPlayerIndex === 0 ? '#1a1a1a' : '#999';
-    perspectiveFlipped = (multiplayerState.myPlayerIndex === 0);
+    perspectiveFlipped = (multiplayerState.myPlayerIndex === 0) !== (gameState.positionsSwapped || false);
   } else {
     perspectiveFlipped = false;
   }
@@ -372,6 +372,9 @@ function startGame(initialState, isOnline) {
     gameState.currentPlayer = initialState.currentPlayer;
     gameState.walls = initialState.walls || [];
     gameState.gameOver = initialState.gameOver || false;
+    if (initialState.positionsSwapped !== undefined) {
+      gameState.positionsSwapped = initialState.positionsSwapped;
+    }
   }
 
   canvas = document.getElementById('gameCanvas');
@@ -632,13 +635,13 @@ function requestRestart() {
 
       // 在线模式：交换颜色和视角
       multiplayerState.myPlayerIndex = 1 - multiplayerState.myPlayerIndex;
-      perspectiveFlipped = (multiplayerState.myPlayerIndex === 0);
+      gameState.positionsSwapped = !gameState.positionsSwapped;
+      perspectiveFlipped = (multiplayerState.myPlayerIndex === 0) !== (gameState.positionsSwapped || false);
       document.getElementById('player-role').textContent =
         `你是${multiplayerState.myPlayerIndex === 0 ? '黑' : '白'}方`;
       document.getElementById('player-role').style.color =
         multiplayerState.myPlayerIndex === 0 ? '#1a1a1a' : '#999';
 
-      gameState.positionsSwapped = !gameState.positionsSwapped;
       resetGame();
       syncGameState();
       SoundManager.playStartSound();

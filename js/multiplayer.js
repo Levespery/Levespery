@@ -301,13 +301,16 @@ async function fetchRoomList() {
       const age = now - createdAt;
 
       // 判断房间是否需要清理：
-      // 1. 双方都不在线（包括旧房间没有 hostActive 字段的情况）
-      // 2. 等待中的房间超过5分钟
+      // 1. 双方都不在线
+      // 2. 房主已离开（guest 留下的孤儿房间）
+      // 3. 无 active 字段的旧房间超过5分钟
+      // 4. 等待中的房间超过5分钟
       const bothInactive = gs.hostActive === false && gs.guestActive === false;
+      const hostLeft = gs.hostActive === false && gs.player2Joined;
       const noActiveField = gs.hostActive === undefined && gs.guestActive === undefined && age > ROOM_EXPIRE_MS;
       const waitingExpired = !gs.player2Joined && gs.hostActive !== false && age > ROOM_EXPIRE_MS;
 
-      if (bothInactive || noActiveField || waitingExpired) {
+      if (bothInactive || hostLeft || noActiveField || waitingExpired) {
         staleIds.push(room.id);
       } else {
         activeRooms.push(room);
@@ -413,6 +416,22 @@ function subscribeToRoom(roomId) {
       },
       (payload) => {
         handleGameStateUpdate(payload.new.game_state);
+      }
+    )
+    .on(
+      'postgres_changes',
+      {
+        event: 'DELETE',
+        schema: 'public',
+        table: 'rooms',
+        filter: `id=eq.${roomId}`
+      },
+      () => {
+        // 房间被删除（房主离开）：提示对手已离开
+        if (multiplayerState.isOnline && !multiplayerState.isHost) {
+          showToast('对手已离开房间');
+          showOpponentLeftModal();
+        }
       }
     )
     .subscribe();
@@ -997,24 +1016,34 @@ function leaveRoomSync() {
   if (!cachedGameState) return;
 
   const roomId = multiplayerState.roomId;
-  const isHost = multiplayerState.isHost;
-  const field = isHost ? 'hostActive' : 'guestActive';
 
-  const stateToSend = { ...cachedGameState, [field]: false };
-  delete stateToSend.restartRequest;
+  if (multiplayerState.isHost) {
+    // 房主关闭浏览器：直接删除房间
+    fetch(`${SUPABASE_URL}/rest/v1/rooms?id=eq.${roomId}`, {
+      method: 'DELETE',
+      headers: {
+        'apikey': SUPABASE_KEY,
+        'Authorization': `Bearer ${SUPABASE_KEY}`
+      },
+      keepalive: true
+    }).catch(() => {});
+  } else {
+    // 加入者关闭浏览器：只标记自己离开
+    const stateToSend = { ...cachedGameState, guestActive: false };
+    delete stateToSend.restartRequest;
 
-  // 使用 fetch keepalive 确保请求能发出
-  fetch(`${SUPABASE_URL}/rest/v1/rooms?id=eq.${roomId}`, {
-    method: 'PATCH',
-    headers: {
-      'Content-Type': 'application/json',
-      'apikey': SUPABASE_KEY,
-      'Authorization': `Bearer ${SUPABASE_KEY}`,
-      'Prefer': 'return=minimal'
-    },
-    body: JSON.stringify({ game_state: stateToSend }),
-    keepalive: true
-  }).catch(() => {});
+    fetch(`${SUPABASE_URL}/rest/v1/rooms?id=eq.${roomId}`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': SUPABASE_KEY,
+        'Authorization': `Bearer ${SUPABASE_KEY}`,
+        'Prefer': 'return=minimal'
+      },
+      body: JSON.stringify({ game_state: stateToSend }),
+      keepalive: true
+    }).catch(() => {});
+  }
 }
 
 // 重新声明在线状态（从后台切回时使用）
@@ -1115,27 +1144,26 @@ function _leaveRoomImmediate() {
   returnToLobby();
 
   // 异步清理数据库（不阻塞UI）
-  supabaseClient
-    .from('rooms')
-    .select('game_state')
-    .eq('id', roomId)
-    .single()
-    .then(({ data: room }) => {
-      if (!room) return;
-      const gs = { ...room.game_state };
-      if (isHost) {
-        gs.hostActive = false;
-      } else {
+  if (isHost) {
+    // 房主离开：直接删除房间，guest 通过 DELETE 事件收到通知
+    supabaseClient.from('rooms').delete().eq('id', roomId)
+      .catch(err => console.error('删除房间出错:', err));
+  } else {
+    // 加入者离开：标记自己离开
+    supabaseClient
+      .from('rooms')
+      .select('game_state')
+      .eq('id', roomId)
+      .single()
+      .then(({ data: room }) => {
+        if (!room) return;
+        const gs = { ...room.game_state };
         gs.guestActive = false;
         if (gs.player2Joined) gs.player2Joined = false;
-      }
-      if (!gs.hostActive && !gs.guestActive) {
-        supabaseClient.from('rooms').delete().eq('id', roomId);
-      } else {
         supabaseClient.from('rooms').update({ game_state: gs }).eq('id', roomId);
-      }
-    })
-    .catch(err => console.error('离开房间清理出错:', err));
+      })
+      .catch(err => console.error('离开房间清理出错:', err));
+  }
 }
 
 // 取消等待

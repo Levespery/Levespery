@@ -1316,20 +1316,33 @@ function startHeartbeat() {
 
     const now = Date.now();
     const field = multiplayerState.isHost ? 'hostActive' : 'guestActive';
-    cachedGameState[field] = true;
-    cachedGameState.lastHeartbeat = now;
 
-    // 发送心跳到数据库
-    fetch(`${SUPABASE_URL}/rest/v1/rooms?id=eq.${multiplayerState.roomId}`, {
-      method: 'PATCH',
-      headers: {
-        'Content-Type': 'application/json',
-        'apikey': SUPABASE_KEY,
-        'Authorization': `Bearer ${SUPABASE_KEY}`,
-        'Prefer': 'return=minimal'
-      },
-      body: JSON.stringify({ game_state: cachedGameState })
-    }).catch(() => {});
+    // 先从 DB 读取最新状态，合并心跳字段后再写回，防止覆盖对手的离开标记
+    fetch(`${SUPABASE_URL}/rest/v1/rooms?id=eq.${multiplayerState.roomId}&select=game_state`, {
+      headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` }
+    })
+    .then(r => r.json())
+    .then(rows => {
+      if (!rows || !rows.length || !rows[0].game_state) return;
+      const dbState = rows[0].game_state;
+      // 只更新自己的活跃状态和心跳时间，不覆盖其他字段
+      dbState[field] = true;
+      dbState.lastHeartbeat = now;
+      // 同步到本地缓存
+      Object.assign(cachedGameState, dbState);
+
+      return fetch(`${SUPABASE_URL}/rest/v1/rooms?id=eq.${multiplayerState.roomId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': SUPABASE_KEY,
+          'Authorization': `Bearer ${SUPABASE_KEY}`,
+          'Prefer': 'return=minimal'
+        },
+        body: JSON.stringify({ game_state: dbState })
+      });
+    })
+    .catch(() => {});
 
     // 检查对方心跳是否超时
     if (cachedGameState.player2Joined) {
@@ -1625,6 +1638,9 @@ function _leaveRoomImmediate() {
   const roomId = multiplayerState.roomId;
   const isHost = multiplayerState.isHost;
 
+  // 立即停止心跳，防止过期状态覆盖离开标记
+  stopHeartbeat();
+
   // 立即切换UI到大厅（保证一定执行）
   returnToLobby();
 
@@ -1636,35 +1652,18 @@ function _leaveRoomImmediate() {
       .then(() => _dbg('multiplayer.js:_leaveRoomImmediate', '房主DELETE完成', { roomId }))
       .catch(err => { console.error('删除房间出错:', err); _dbg('multiplayer.js:_leaveRoomImmediate', '房主DELETE失败', { roomId, err: String(err) }); });
   } else {
-    // 加入者离开：标记自己离开
-    _dbg('multiplayer.js:_leaveRoomImmediate', 'Guest查询房间', { roomId });
-    supabaseClient
-      .from('rooms')
-      .select('game_state')
-      .eq('id', roomId)
-      .single()
-      .then(({ data: room, error }) => {
-        if (error || !room) { _dbg('multiplayer.js:_leaveRoomImmediate', 'Guest:房间已不存在', { roomId }); return; }
-        const gs = { ...room.game_state };
-        gs.guestActive = false;
-        gs.player2Joined = false;
-        // 如果房主也已离开，直接删除房间
-        if (gs.hostActive === false) {
-          _dbg('multiplayer.js:_leaveRoomImmediate', 'Guest:房主已离线,删除房间', { roomId });
-          supabaseClient.from('rooms').delete().eq('id', roomId)
-            .catch(err => console.error('删除房间出错:', err));
-        } else {
-          // 房主仍在，重置 player2Joined 让房间可被新玩家加入
-          _dbg('multiplayer.js:_leaveRoomImmediate', 'Guest:房主在线,标记离开', { roomId });
-          supabaseClient.from('rooms').update({ game_state: gs }).eq('id', roomId)
-            .then(() => {
-              // DB 更新完成后再刷新房间列表
-              setTimeout(() => { try { fetchRoomList(); } catch (_) {} }, 500);
-            })
-            .catch(err => console.error('离开房间清理出错:', err));
-        }
+    // 加入者离开：直接用 cachedGameState 更新，避免 read-then-write 竞态
+    const gs = cachedGameState ? { ...cachedGameState } : {};
+    gs.guestActive = false;
+    gs.player2Joined = false;
+    gs.lastHeartbeat = Date.now();
+    _dbg('multiplayer.js:_leaveRoomImmediate', 'Guest更新房间', { roomId });
+    supabaseClient.from('rooms').update({ game_state: gs }).eq('id', roomId)
+      .then(() => {
+        _dbg('multiplayer.js:_leaveRoomImmediate', 'Guest更新完成', { roomId });
+        setTimeout(() => { try { fetchRoomList(); } catch (_) {} }, 500);
       })
-      .catch(err => { console.error('离开房间清理出错:', err); _dbg('multiplayer.js:_leaveRoomImmediate', 'Guest查询失败', { roomId, err: String(err) }); });
+      .catch(err => { console.error('离开房间清理出错:', err); _dbg('multiplayer.js:_leaveRoomImmediate', 'Guest更新失败', { roomId, err: String(err) }); });
   }
 }
 

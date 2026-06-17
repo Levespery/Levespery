@@ -295,6 +295,9 @@ async function joinRoomByName(roomId, roomName) {
       .update({ game_state: updatedState })
       .eq('id', data.id);
 
+    // 设置缓存状态，供广播使用
+    cachedGameState = { ...updatedState };
+
     startGame(updatedState, true);
     subscribeToRoom(data.id);
 
@@ -496,6 +499,17 @@ function subscribeToRoom(roomId) {
           online_at: new Date().toISOString(),
           role: multiplayerState.isHost ? 'host' : 'guest'
         });
+
+        // 订阅成功后，如果是加入者，发送广播通知房主
+        if (!multiplayerState.isHost && cachedGameState) {
+          setTimeout(() => {
+            channel.send({
+              type: 'broadcast',
+              event: 'state_update',
+              payload: { state: cachedGameState }
+            });
+          }, 300);
+        }
       }
     });
 
@@ -1620,6 +1634,13 @@ function startDrag(e, wallType) {
   e.preventDefault();
   e.stopPropagation();
 
+  // 检查是否轮到自己
+  const isMyTurn = multiplayerState.isOnline
+    ? gameState.currentPlayer === multiplayerState.myPlayerIndex
+    : aiMode ? gameState.currentPlayer === 0 : true;
+
+  if (!isMyTurn) return;
+
   const player = gameState.players[gameState.currentPlayer];
   if (player.walls <= 0) return;
 
@@ -1703,10 +1724,12 @@ function endDrag(e) {
   // 记录是否成功放置
   let placed = false;
 
-  // 在线模式下检查是否轮到自己
-  if (multiplayerState.isOnline && gameState.currentPlayer !== multiplayerState.myPlayerIndex) {
-    // 不是自己的回合，清除状态
-  } else if (dragState.lastValidWall && dragState.lastValidWall.orientation === dragState.wallType) {
+  // 检查是否轮到自己
+  const isMyTurn = multiplayerState.isOnline
+    ? gameState.currentPlayer === multiplayerState.myPlayerIndex
+    : aiMode ? gameState.currentPlayer === 0 : true;
+
+  if (isMyTurn && dragState.lastValidWall && dragState.lastValidWall.orientation === dragState.wallType) {
     // 使用最后有效的墙壁位置进行放置
     handleWallClick(dragState.lastValidWall);
     placed = true;

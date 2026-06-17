@@ -144,23 +144,36 @@ const AI = {
 
     console.log('AI 开始思考...');
 
-    // 添加延迟让 AI 有"思考"的感觉
-    await this.sleep(400 + Math.random() * 500);
+    try {
+      // 添加延迟让 AI 有"思考"的感觉
+      await this.sleep(400 + Math.random() * 500);
 
-    const bestAction = this.evaluate();
-    console.log('AI 决定:', bestAction);
+      // 再次检查状态（延迟期间可能已变化）
+      if (gameState.gameOver || gameState.currentPlayer !== 1) return;
 
-    if (bestAction) {
-      if (bestAction.type === 'move') {
-        this.executeMove(bestAction.row, bestAction.col);
-      } else if (bestAction.type === 'wall') {
-        this.executeWall(bestAction.wall);
+      const bestAction = this.evaluate();
+      console.log('AI 决定:', bestAction);
+
+      if (bestAction) {
+        if (bestAction.type === 'move') {
+          this.executeMove(bestAction.row, bestAction.col);
+        } else if (bestAction.type === 'wall') {
+          this.executeWall(bestAction.wall);
+        }
+      } else {
+        console.log('AI 没有找到有效动作，跳过回合');
+        switchPlayer();
+        showUndoButton();
+        render();
       }
-    } else {
-      console.log('AI 没有找到有效动作，跳过回合');
-      switchPlayer();
-      showUndoButton();
-      render();
+    } catch (error) {
+      console.error('AI 执行出错:', error);
+      // 出错时强制切换回合，防止卡死
+      if (gameState.currentPlayer === 1 && !gameState.gameOver) {
+        switchPlayer();
+        showUndoButton();
+        render();
+      }
     }
   },
 
@@ -214,27 +227,29 @@ const AI = {
 
     // 智能墙壁策略
     if (aiPlayer.walls > 0 && humanPath && aiPath) {
+      let bestWall = null;
+
       // 紧急阻拦
       if (humanPath.length <= 3) {
         const wall = this.findBlockingWall(humanPath, aiPath);
-        if (wall) actions.push({ type: 'wall', wall: wall });
+        if (wall) bestWall = wall;
       }
 
-      // 路径压制
-      if (humanPath.length < aiPath.length - 2) {
-        const wall = this.findBestWall(humanPath, aiPath);
-        if (wall) actions.push({ type: 'wall', wall: wall });
+      // 路径压制或预判拦截
+      if (!bestWall && humanPath.length < aiPath.length - 2) {
+        bestWall = this.findBestWall(humanPath, aiPath);
       }
 
-      // 预判拦截
-      if (this.isOpponentAdvancing() && humanPath.length <= 5) {
-        const wall = this.findInterceptWall(humanPath, aiPath);
-        if (wall) actions.push({ type: 'wall', wall: wall });
+      if (!bestWall && this.isOpponentAdvancing() && humanPath.length <= 5) {
+        bestWall = this.findInterceptWall(humanPath, aiPath);
       }
 
-      // 一般性放墙
-      const wall = this.findBestWall(humanPath, aiPath);
-      if (wall) actions.push({ type: 'wall', wall: wall });
+      // 一般性放墙（只在前面没找到时）
+      if (!bestWall) {
+        bestWall = this.findBestWall(humanPath, aiPath);
+      }
+
+      if (bestWall) actions.push({ type: 'wall', wall: bestWall });
     }
 
     // 移动选项

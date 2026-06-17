@@ -1057,7 +1057,7 @@ canvas {
     height: calc(100vw - 14px) !important;
     max-width: calc(100vw - 14px);
     max-height: calc(100vw - 14px);
-    margin: 0 auto 8px;
+    margin: 4px auto 8px;
     border-width: 2px;
     border-radius: 6px;
   }

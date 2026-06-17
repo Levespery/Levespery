@@ -867,23 +867,35 @@ function drawPlayers() {
     // 绘制阴影
     ctx.beginPath();
     ctx.arc(x + 2, y + 2, PLAYER_RADIUS, 0, Math.PI * 2);
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.25)';
     ctx.fill();
 
-    // 绘制玩家棋子
+    // 绘制玩家棋子（纯色，带渐变效果）
+    const gradient = ctx.createRadialGradient(x - 6, y - 6, 2, x, y, PLAYER_RADIUS);
+    if (i === 0) {
+      // 黑棋：深灰到黑色渐变
+      gradient.addColorStop(0, '#4a4a4a');
+      gradient.addColorStop(1, '#1a1a1a');
+    } else {
+      // 白棋：白色到浅灰渐变
+      gradient.addColorStop(0, '#ffffff');
+      gradient.addColorStop(1, '#d0d0d0');
+    }
+
     ctx.beginPath();
     ctx.arc(x, y, PLAYER_RADIUS, 0, Math.PI * 2);
-    ctx.fillStyle = i === 0 ? COLORS.player1 : COLORS.player2;
+    ctx.fillStyle = gradient;
     ctx.fill();
-    ctx.strokeStyle = i === 0 ? '#555' : '#999';
+
+    // 边框
+    ctx.strokeStyle = i === 0 ? '#000' : '#aaa';
     ctx.lineWidth = 2;
     ctx.stroke();
 
-    // 绘制玩家编号
-    ctx.fillStyle = i === 0 ? '#fff' : '#333';
-    ctx.font = 'bold 16px Arial';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(i + 1, x, y);
+    // 高光点
+    ctx.beginPath();
+    ctx.arc(x - 7, y - 7, 4, 0, Math.PI * 2);
+    ctx.fillStyle = i === 0 ? 'rgba(255,255,255,0.25)' : 'rgba(255,255,255,0.6)';
+    ctx.fill();
   }
 }

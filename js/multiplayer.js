@@ -212,6 +212,9 @@ async function joinRoomByName(roomId, roomName) {
 
   console.log('加入房间:', roomName, 'ID:', roomId);
 
+  // 先取消房间列表订阅，防止旧回调干扰加入流程
+  unsubscribeRoomList();
+
   try {
     const { data, error } = await supabaseClient
       .from('rooms')
@@ -423,12 +426,20 @@ function handleGameStateUpdate(newState) {
   const oldState = cachedGameState ? { ...cachedGameState } : null;
   cachedGameState = { ...newState };
 
-  // 检测对方离开房间
+  // ── 对手离开/回来检测（在 gameState 空检查之前，确保即使未初始化也能响应）──
   const imHost = multiplayerState.isHost;
   const opponentLeft = imHost ? (newState.guestActive === false) : (newState.hostActive === false);
+
   if (opponentLeft && newState.player2Joined) {
-    showOpponentLeftModal();
-    return;
+    if (newState.gameOver) {
+      // 游戏已结束，对手离开：只显示 toast，不阻断胜负流程
+      showToast('对手已离开房间');
+    } else {
+      // 游戏进行中：显示 toast + 弹窗
+      showToast('对手已离开房间');
+      showOpponentLeftModal();
+      return;
+    }
   }
 
   // 检测对方回来了（之前离开，现在重新在线）
@@ -441,11 +452,10 @@ function handleGameStateUpdate(newState) {
       : (newState.hostActive === true);
     if (opponentWasOffline && opponentNowOnline) {
       document.getElementById('opponent-left-modal').classList.remove('show');
-      // 恢复回合指示器
+      showToast('对方已回来，游戏继续');
       if (gameState) {
         updateTurnIndicator();
       }
-      // 取消本地的离开计时器（对方通过实时更新已经知道我们还在）
       if (leaveTimer) {
         clearTimeout(leaveTimer);
         leaveTimer = null;
@@ -461,6 +471,7 @@ function handleGameStateUpdate(newState) {
     return;
   }
 
+  // ── 以下为游戏中的状态同步，必须有 gameState ──
   if (!gameState) return;
 
   // 检测再来一局请求
@@ -589,6 +600,21 @@ function showOpponentLeftModal() {
   document.getElementById('opponent-left-modal').classList.add('show');
 }
 
+// 临时 toast 提示（自动消失）
+function showToast(msg, duration = 3000) {
+  let toast = document.getElementById('global-toast');
+  if (!toast) {
+    toast = document.createElement('div');
+    toast.id = 'global-toast';
+    toast.className = 'toast';
+    document.body.appendChild(toast);
+  }
+  toast.textContent = msg;
+  toast.classList.add('show');
+  clearTimeout(toast._timer);
+  toast._timer = setTimeout(() => toast.classList.remove('show'), duration);
+}
+
 // 继续等待：保持游戏界面，等待对手回来
 async function continueWaiting() {
   document.getElementById('opponent-left-modal').classList.remove('show');
@@ -600,7 +626,7 @@ async function continueWaiting() {
 
   // 加入者（非房主）：对方（房主）已离开，房间无法继续，直接返回大厅
   if (!multiplayerState.isHost) {
-    leaveRoom();
+    _leaveRoomImmediate();
     return;
   }
 
@@ -807,6 +833,8 @@ function startLocalPlay() {
   multiplayerState.isOnline = false;
   aiMode = false;
   document.getElementById('room-container').style.display = 'none';
+  document.getElementById('create-room-container').style.display = 'none';
+  document.getElementById('join-room-container').style.display = 'none';
   document.getElementById('waiting-container').style.display = 'none';
   document.getElementById('game-container').style.display = 'block';
   document.getElementById('room-info').style.display = 'none';
@@ -857,6 +885,8 @@ function startAIPlay() {
   multiplayerState.isOnline = false;
   aiMode = true;
   document.getElementById('room-container').style.display = 'none';
+  document.getElementById('create-room-container').style.display = 'none';
+  document.getElementById('join-room-container').style.display = 'none';
   document.getElementById('waiting-container').style.display = 'none';
   document.getElementById('game-container').style.display = 'block';
   document.getElementById('room-info').style.display = 'none';
@@ -1011,9 +1041,9 @@ function reassertActive() {
 // 返回大厅（UI 层面）
 function returnToLobby() {
   // 重新订阅房间列表
-  unsubscribeRoomList();
-  subscribeRoomList();
-  fetchRoomList();
+  try { unsubscribeRoomList(); } catch (_) {}
+  try { subscribeRoomList(); } catch (_) {}
+  try { fetchRoomList(); } catch (_) {}
 
   multiplayerState = {
     isOnline: false,
@@ -1026,6 +1056,7 @@ function returnToLobby() {
   };
 
   document.getElementById('win-modal').classList.remove('show');
+  document.getElementById('opponent-left-modal').classList.remove('show');
   document.getElementById('restart-notify').style.display = 'none';
   document.getElementById('room-container').style.display = 'block';
   document.getElementById('create-room-container').style.display = 'none';
@@ -1073,14 +1104,14 @@ function _leaveRoomImmediate() {
 
   // 先取消订阅
   if (multiplayerState.subscription) {
-    supabaseClient.removeChannel(multiplayerState.subscription);
+    try { supabaseClient.removeChannel(multiplayerState.subscription); } catch (_) {}
     multiplayerState.subscription = null;
   }
 
   const roomId = multiplayerState.roomId;
   const isHost = multiplayerState.isHost;
 
-  // 立即切换UI到大厅
+  // 立即切换UI到大厅（保证一定执行）
   returnToLobby();
 
   // 异步清理数据库（不阻塞UI）

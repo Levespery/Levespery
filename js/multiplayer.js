@@ -33,6 +33,13 @@ window.addEventListener('DOMContentLoaded', () => {
   // 延迟一点确保 SDK 已加载
   setTimeout(() => {
     initSupabase();
+    // 初始化完成后获取房间列表并订阅
+    setTimeout(() => {
+      if (supabaseReady) {
+        fetchRoomList();
+        subscribeRoomList();
+      }
+    }, 200);
   }, 100);
 });
 
@@ -41,22 +48,14 @@ let multiplayerState = {
   isOnline: false,
   isHost: false,
   myPlayerIndex: 0,
-  roomCode: null,
+  roomName: null,      // 改自 roomCode
   roomId: null,
-  subscription: null
+  subscription: null,
+  listSubscription: null  // 新增：房间列表订阅
 };
 
 // 人机对战状态
 let aiMode = false;
-
-// 生成随机房间号（4位数字）
-function generateRoomCode() {
-  let code = '';
-  for (let i = 0; i < 4; i++) {
-    code += Math.floor(Math.random() * 10);
-  }
-  return code;
-}
 
 // 创建房间
 async function createRoom() {
@@ -69,8 +68,39 @@ async function createRoom() {
     return;
   }
 
-  const roomCode = generateRoomCode();
-  console.log('创建房间:', roomCode);
+  // 显示创建房间界面
+  showCreateRoom();
+}
+
+// 显示创建房间界面
+function showCreateRoom() {
+  document.getElementById('room-container').style.display = 'none';
+  document.getElementById('create-room-container').style.display = 'block';
+  document.getElementById('room-name-input').value = '';
+  document.getElementById('room-name-input').focus();
+}
+
+// 取消创建房间
+function cancelCreateRoom() {
+  document.getElementById('create-room-container').style.display = 'none';
+  document.getElementById('room-container').style.display = 'block';
+}
+
+// 确认创建房间
+async function confirmCreateRoom() {
+  const roomName = document.getElementById('room-name-input').value.trim();
+  
+  if (!roomName) {
+    alert('请输入房间名称');
+    return;
+  }
+
+  if (roomName.length > 20) {
+    alert('房间名称不能超过20个字符');
+    return;
+  }
+
+  console.log('创建房间:', roomName);
 
   // 随机分配颜色：hostColor 为房主的棋子颜色 (0=黑, 1=白)
   const hostColor = Math.random() < 0.5 ? 0 : 1;
@@ -83,14 +113,15 @@ async function createRoom() {
     currentPlayer: 0,
     walls: [],
     gameOver: false,
-    hostColor: hostColor
+    hostColor: hostColor,
+    player2Joined: false
   };
 
   try {
     const { data, error } = await supabaseClient
       .from('rooms')
       .insert({
-        room_code: roomCode,
+        room_name: roomName,
         game_state: initialGameState
       })
       .select()
@@ -98,7 +129,12 @@ async function createRoom() {
 
     if (error) {
       console.error('数据库错误:', error);
-      throw error;
+      if (error.code === '23505') { // 唯一约束冲突
+        alert('房间名称已存在，请使用其他名称');
+      } else {
+        alert('创建房间失败: ' + error.message);
+      }
+      return;
     }
 
     console.log('房间创建成功:', data);
@@ -107,12 +143,13 @@ async function createRoom() {
       isOnline: true,
       isHost: true,
       myPlayerIndex: hostColor,
-      roomCode: roomCode,
+      roomName: roomName,
       roomId: data.id,
-      subscription: null
+      subscription: null,
+      listSubscription: null
     };
 
-    showWaitingRoom(roomCode);
+    showWaitingRoom(roomName);
     subscribeToRoom(data.id);
 
   } catch (error) {
@@ -122,36 +159,34 @@ async function createRoom() {
 }
 
 // 加入房间
-async function joinRoom() {
+async function joinRoomByName(roomId, roomName) {
   if (!supabaseClient) {
     alert('联机服务未初始化，请刷新页面重试');
     return;
   }
 
-  const input = document.getElementById('room-code-input');
-  const roomCode = input.value.trim().toUpperCase();
-
-  if (!roomCode || roomCode.length !== 4) {
-    alert('请输入4位房间号');
-    return;
-  }
-
-  console.log('加入房间:', roomCode);
+  console.log('加入房间:', roomName, 'ID:', roomId);
 
   try {
     const { data, error } = await supabaseClient
       .from('rooms')
       .select('*')
-      .eq('room_code', roomCode)
+      .eq('id', roomId)
       .single();
 
     if (error || !data) {
       console.error('查询错误:', error);
-      alert('房间不存在，请检查房间号');
+      alert('房间不存在');
       return;
     }
 
     console.log('找到房间:', data);
+
+    // 检查房间是否已满
+    if (data.game_state.player2Joined) {
+      alert('房间已满，无法加入');
+      return;
+    }
 
     // 根据 hostColor 计算加入者的颜色
     const hostColor = data.game_state.hostColor !== undefined ? data.game_state.hostColor : 0;
@@ -161,9 +196,10 @@ async function joinRoom() {
       isOnline: true,
       isHost: false,
       myPlayerIndex: joinerColor,
-      roomCode: roomCode,
+      roomName: roomName,
       roomId: data.id,
-      subscription: null
+      subscription: null,
+      listSubscription: null
     };
 
     // 更新游戏状态，标记玩家已加入
@@ -183,6 +219,83 @@ async function joinRoom() {
   } catch (error) {
     console.error('加入房间失败:', error);
     alert('加入房间失败: ' + (error.message || '请检查网络连接'));
+  }
+}
+
+// 获取房间列表
+async function fetchRoomList() {
+  if (!supabaseReady || !supabaseClient) {
+    console.log('Supabase 未就绪，跳过获取房间列表');
+    return;
+  }
+
+  try {
+    const { data, error } = await supabaseClient
+      .from('rooms')
+      .select('id, room_name, game_state')
+      .order('created_at', { ascending: false })
+      .limit(20);
+
+    if (error) {
+      console.error('获取房间列表失败:', error);
+      return;
+    }
+
+    // 过滤出等待中的房间（player2Joined 为 false 或不存在）
+    const waitingRooms = data.filter(room => 
+      !room.game_state.player2Joined
+    );
+
+    renderRoomList(waitingRooms);
+  } catch (error) {
+    console.error('获取房间列表错误:', error);
+  }
+}
+
+// 渲染房间列表
+function renderRoomList(rooms) {
+  const roomList = document.getElementById('room-list');
+  if (!roomList) return;
+
+  if (!rooms || rooms.length === 0) {
+    roomList.innerHTML = '<p class="room-list-empty">暂无可用房间</p>';
+    return;
+  }
+
+  roomList.innerHTML = rooms.map(room => `
+    <div class="room-item" onclick="joinRoomByName('${room.id}', '${room.room_name}')">
+      <span class="room-item-name">${room.room_name}</span>
+      <span class="room-item-status">等待中</span>
+    </div>
+  `).join('');
+}
+
+// 订阅房间列表变化
+function subscribeRoomList() {
+  if (!supabaseReady || !supabaseClient) return;
+
+  multiplayerState.listSubscription = supabaseClient
+    .channel('room-list')
+    .on(
+      'postgres_changes',
+      {
+        event: '*',
+        schema: 'public',
+        table: 'rooms'
+      },
+      () => {
+        // 房间列表变化时重新获取
+        fetchRoomList();
+      }
+    )
+    .subscribe();
+}
+
+// 取消订阅房间列表
+function unsubscribeRoomList() {
+  if (multiplayerState.listSubscription) {
+    supabaseClient.removeChannel(multiplayerState.listSubscription);
+    multiplayerState.listSubscription = null;
   }
 }
 
@@ -330,11 +443,29 @@ async function syncGameState() {
 }
 
 // 显示等待房间
-function showWaitingRoom(roomCode) {
+function showWaitingRoom(roomName) {
   document.getElementById('room-container').style.display = 'none';
+  document.getElementById('create-room-container').style.display = 'none';
   document.getElementById('waiting-container').style.display = 'block';
   document.getElementById('game-container').style.display = 'none';
-  document.getElementById('room-code-text').textContent = roomCode;
+  document.getElementById('room-name-text').textContent = roomName;
+  
+  // 更新玩家位置状态
+  const hostColor = multiplayerState.myPlayerIndex;
+  const blackSlot = document.getElementById('slot-black-status');
+  const whiteSlot = document.getElementById('slot-white-status');
+  
+  if (hostColor === 0) { // 房主是黑方
+    blackSlot.textContent = '已就位';
+    blackSlot.style.color = '#00b894';
+    whiteSlot.textContent = '等待中';
+    whiteSlot.style.color = '#636e72';
+  } else { // 房主是白方
+    whiteSlot.textContent = '已就位';
+    whiteSlot.style.color = '#00b894';
+    blackSlot.textContent = '等待中';
+    blackSlot.style.color = '#636e72';
+  }
 }
 
 // 开始游戏
@@ -357,7 +488,7 @@ function startGame(initialState, isOnline) {
 
   if (isOnline) {
     document.getElementById('room-info').style.display = 'flex';
-    document.getElementById('current-room-code').textContent = multiplayerState.roomCode;
+    document.getElementById('current-room-name').textContent = multiplayerState.roomName;
     document.getElementById('player-role').textContent =
       `你是${multiplayerState.myPlayerIndex === 0 ? '黑' : '白'}方`;
     document.getElementById('player-role').style.color =
@@ -554,23 +685,6 @@ function startAIPlay() {
 }
 
 
-// 复制房间号
-function copyRoomCode() {
-  const roomCode = document.getElementById('room-code-text').textContent;
-  navigator.clipboard.writeText(roomCode).then(() => {
-    alert('房间号已复制！');
-  }).catch(() => {
-    // 降级方案
-    const textArea = document.createElement('textarea');
-    textArea.value = roomCode;
-    document.body.appendChild(textArea);
-    textArea.select();
-    document.execCommand('copy');
-    document.body.removeChild(textArea);
-    alert('房间号已复制！');
-  });
-}
-
 // 取消等待
 function cancelWaiting() {
   if (multiplayerState.subscription) {
@@ -581,16 +695,23 @@ function cancelWaiting() {
     supabaseClient.from('rooms').delete().eq('id', multiplayerState.roomId);
   }
 
+  // 重新订阅房间列表
+  unsubscribeRoomList();
+  subscribeRoomList();
+  fetchRoomList();
+
   multiplayerState = {
     isOnline: false,
     isHost: false,
     myPlayerIndex: 0,
-    roomCode: null,
+    roomName: null,
     roomId: null,
-    subscription: null
+    subscription: null,
+    listSubscription: multiplayerState.listSubscription
   };
 
   document.getElementById('room-container').style.display = 'block';
+  document.getElementById('create-room-container').style.display = 'none';
   document.getElementById('waiting-container').style.display = 'none';
   document.getElementById('game-container').style.display = 'none';
 }
@@ -605,18 +726,25 @@ function leaveGame() {
     supabaseClient.from('rooms').delete().eq('id', multiplayerState.roomId);
   }
 
+  // 重新订阅房间列表
+  unsubscribeRoomList();
+  subscribeRoomList();
+  fetchRoomList();
+
   multiplayerState = {
     isOnline: false,
     isHost: false,
     myPlayerIndex: 0,
-    roomCode: null,
+    roomName: null,
     roomId: null,
-    subscription: null
+    subscription: null,
+    listSubscription: multiplayerState.listSubscription
   };
 
   document.getElementById('win-modal').classList.remove('show');
   document.getElementById('restart-notify').style.display = 'none';
   document.getElementById('room-container').style.display = 'block';
+  document.getElementById('create-room-container').style.display = 'none';
   document.getElementById('waiting-container').style.display = 'none';
   document.getElementById('game-container').style.display = 'none';
 }

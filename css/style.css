@@ -23,14 +23,15 @@ body {
   border-radius: 16px;
   padding: 28px;
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
-  max-width: 790px;
+  max-width: 660px;
   width: 100%;
+  position: relative;
 }
 
 h1 {
   text-align: center;
   color: #2d3436;
-  font-size: 2.6rem;
+  font-size: 2.2rem;
   margin-bottom: 4px;
 }
 
@@ -94,8 +95,17 @@ h1 {
   color: #2d3436;
   font-size: 1.2rem;
   padding: 6px 16px;
+  min-height: 36px;
+  line-height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   background: #ffeaa7;
   border-radius: 20px;
+  min-width: 140px;
+  text-align: center;
+  display: inline-block;
+  line-height: 1.4;
 }
 
 /* 墙壁选择器 */
@@ -370,6 +380,52 @@ canvas {
   background: #00a381;
 }
 
+.btn-join {
+  background: #0984e3;
+  width: 100%;
+  max-width: 300px;
+  padding: 16px 38px;
+  font-size: 1.3rem;
+  margin-bottom: 20px;
+}
+
+.btn-join:hover {
+  background: #0773c5;
+}
+
+.back-button {
+  position: absolute;
+  top: 20px;
+  left: 20px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #636e72;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: color 0.2s;
+  z-index: 10;
+}
+
+.back-button:hover {
+  color: #2d3436;
+}
+
+.back-arrow {
+  font-size: 1.4rem;
+  line-height: 1;
+}
+
+.join-room-section {
+  margin-top: 20px;
+}
+
+.join-room-section h2 {
+  margin-bottom: 20px;
+  font-size: 1.6rem;
+  color: #2d3436;
+}
+
 .divider {
   color: #636e72;
   margin: 20px 0;
@@ -599,6 +655,10 @@ canvas {
 
   .room-code-display strong {
     font-size: 1.5rem;
+  }
+
+  .current-turn {
+    font-size: calc(1.2rem * 0.8);
   }
 
   .room-info {

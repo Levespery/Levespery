@@ -89,6 +89,19 @@ function cancelCreateRoom() {
   document.getElementById('room-container').style.display = 'block';
 }
 
+// 显示加入房间界面
+function showJoinRoom() {
+  document.getElementById('room-container').style.display = 'none';
+  document.getElementById('join-room-container').style.display = 'block';
+  fetchRoomList();
+}
+
+// 取消加入房间
+function cancelJoinRoom() {
+  document.getElementById('join-room-container').style.display = 'none';
+  document.getElementById('room-container').style.display = 'block';
+}
+
 // 确认创建房间
 async function confirmCreateRoom() {
   const roomName = document.getElementById('room-name-input').value.trim();
@@ -318,7 +331,7 @@ function renderRoomList(rooms) {
   if (!roomList) return;
 
   if (!rooms || rooms.length === 0) {
-    roomList.innerHTML = '<p class="room-list-empty">暂无可用房间</p>';
+    roomList.innerHTML = '<p class="room-list-empty">目前无房间</p>';
     return;
   }
 
@@ -407,6 +420,7 @@ function handleGameStateUpdate(newState) {
   console.log('收到状态更新:', newState);
 
   // 缓存最新状态
+  const oldState = cachedGameState ? { ...cachedGameState } : null;
   cachedGameState = { ...newState };
 
   // 检测对方离开房间
@@ -415,6 +429,25 @@ function handleGameStateUpdate(newState) {
   if (opponentLeft && newState.player2Joined) {
     showOpponentLeftModal();
     return;
+  }
+
+  // 检测对方回来了（之前离开，现在重新在线）
+  if (oldState && newState.player2Joined) {
+    const opponentWasOffline = imHost
+      ? (oldState.guestActive === false)
+      : (oldState.hostActive === false);
+    const opponentNowOnline = imHost
+      ? (newState.guestActive === true)
+      : (newState.hostActive === true);
+    if (opponentWasOffline && opponentNowOnline) {
+      document.getElementById('opponent-left-modal').classList.remove('show');
+      // 取消本地的离开计时器（对方通过实时更新已经知道我们还在）
+      if (leaveTimer) {
+        clearTimeout(leaveTimer);
+        leaveTimer = null;
+      }
+      reassertActive();
+    }
   }
 
   // 如果玩家加入，房主自动进入游戏
@@ -494,6 +527,37 @@ function handleGameStateUpdate(newState) {
   updateModeHint();
   render();
 
+  // 检测对手操作并播放音效
+  if (oldState && !opponentUndone) {
+    // 对方放墙
+    const oldWalls = oldState.walls ? oldState.walls.length : 0;
+    const newWalls = newState.walls ? newState.walls.length : 0;
+    if (newWalls > oldWalls) {
+      SoundManager.playWallSound();
+    }
+    // 对方移动棋子
+    const oldPlayers = oldState.players || [];
+    const newPlayers = newState.players || [];
+    let movedPlayerIdx = -1;
+    for (let i = 0; i < newPlayers.length; i++) {
+      if (oldPlayers[i] &&
+        (oldPlayers[i].row !== newPlayers[i].row || oldPlayers[i].col !== newPlayers[i].col)) {
+        movedPlayerIdx = i;
+        break;
+      }
+    }
+    if (movedPlayerIdx >= 0) {
+      const oldP = oldPlayers[movedPlayerIdx];
+      const newP = newPlayers[movedPlayerIdx];
+      const dist = Math.abs(newP.row - oldP.row) + Math.abs(newP.col - oldP.col);
+      if (dist >= 2) {
+        SoundManager.playJumpSound();
+      } else {
+        SoundManager.playMoveSound();
+      }
+    }
+  }
+
   // 检查游戏结束
   if (newState.gameOver) {
     SoundManager.playWinSound();
@@ -553,6 +617,15 @@ async function continueWaiting() {
     gs.hostActive = true;
     delete gs.restartRequest;
     delete gs.lastMoveBy;
+
+    // 重置棋盘状态（棋子位置、墙壁、回合），保留颜色分配
+    gs.players = [
+      { row: 0, col: 4, walls: 10 },
+      { row: 8, col: 4, walls: 10 }
+    ];
+    gs.currentPlayer = 0;
+    gs.walls = [];
+    delete gs.positionsSwapped;
 
     await supabaseClient
       .from('rooms')
@@ -891,9 +964,10 @@ async function leaveRoom() {
     }
   } catch (err) {
     console.error('离开房间处理出错:', err);
+  } finally {
+    // 无论数据库操作是否成功，始终返回大厅
+    returnToLobby();
   }
-
-  returnToLobby();
 }
 
 // 同步离开状态（浏览器关闭时使用，同步请求）
@@ -964,6 +1038,7 @@ function returnToLobby() {
   document.getElementById('restart-notify').style.display = 'none';
   document.getElementById('room-container').style.display = 'block';
   document.getElementById('create-room-container').style.display = 'none';
+  document.getElementById('join-room-container').style.display = 'none';
   document.getElementById('waiting-container').style.display = 'none';
   document.getElementById('game-container').style.display = 'none';
 }

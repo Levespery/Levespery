@@ -27,7 +27,7 @@
 
       <!-- 房间列表 -->
       <div class="room-list-section">
-        <h3>可用房间</h3>
+        <h3>加入房间</h3>
         <div id="room-list" class="room-list">
           <p class="room-list-empty">暂无可用房间</p>
         </div>
@@ -157,6 +157,18 @@
       </div>
       <div class="win-buttons">
         <button class="btn btn-restart" id="btn-restart" onclick="requestRestart()">再来一局</button>
+        <button class="btn" onclick="leaveGame()">返回大厅</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 对方已离开弹窗 -->
+  <div class="modal" id="opponent-left-modal">
+    <div class="modal-content">
+      <h2>对方已离开</h2>
+      <p style="color:#636e72;margin-bottom:20px;">你的对手已离开房间</p>
+      <div class="win-buttons">
+        <button class="btn btn-restart" onclick="continueWaiting()">继续等待</button>
         <button class="btn" onclick="leaveGame()">返回大厅</button>
       </div>
     </div>

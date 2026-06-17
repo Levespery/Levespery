@@ -236,7 +236,7 @@ function handleGameStateUpdate(newState) {
     if (newState.hostColor !== undefined) {
       const myColor = multiplayerState.isHost ? newState.hostColor : (1 - newState.hostColor);
       multiplayerState.myPlayerIndex = myColor;
-      perspectiveFlipped = (myColor === 1);
+      perspectiveFlipped = (myColor === 0);
       document.getElementById('player-role').textContent =
         `你是${myColor === 0 ? '黑' : '白'}方`;
       document.getElementById('player-role').style.color =
@@ -362,7 +362,7 @@ function startGame(initialState, isOnline) {
       `你是${multiplayerState.myPlayerIndex === 0 ? '黑' : '白'}方`;
     document.getElementById('player-role').style.color =
       multiplayerState.myPlayerIndex === 0 ? '#1a1a1a' : '#999';
-    perspectiveFlipped = (multiplayerState.myPlayerIndex === 1);
+    perspectiveFlipped = (multiplayerState.myPlayerIndex === 0);
   } else {
     perspectiveFlipped = false;
   }
@@ -513,7 +513,7 @@ function startAIPlay() {
   }
 
   // 重置视角和位置交换状态
-  perspectiveFlipped = false;
+  perspectiveFlipped = true;
 
   // 初始化游戏
   canvas = document.getElementById('gameCanvas');
@@ -632,7 +632,7 @@ function requestRestart() {
 
       // 在线模式：交换颜色和视角
       multiplayerState.myPlayerIndex = 1 - multiplayerState.myPlayerIndex;
-      perspectiveFlipped = (multiplayerState.myPlayerIndex === 1);
+      perspectiveFlipped = (multiplayerState.myPlayerIndex === 0);
       document.getElementById('player-role').textContent =
         `你是${multiplayerState.myPlayerIndex === 0 ? '黑' : '白'}方`;
       document.getElementById('player-role').style.color =

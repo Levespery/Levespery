@@ -329,9 +329,9 @@ function getWallFromPosition(x, y, threshold, orientation) {
       if (Math.abs(relY - edgeY) < CELL_SIZE * threshold) {
         const visCol = Math.floor(relX / CELL_SIZE);
         if (visCol >= 0 && visCol < GRID_SIZE - 1) {
-          // 将视觉坐标转换为逻辑坐标
-          const logicalWallRow = logicalRow(visRow);
-          const logicalWallCol = logicalCol(visCol);
+          // 将视觉坐标转换为逻辑坐标（使用两个相邻视觉行/列的最小逻辑值）
+          const logicalWallRow = Math.min(logicalRow(visRow), logicalRow(visRow + 1));
+          const logicalWallCol = Math.min(logicalCol(visCol), logicalCol(visCol + 1));
           return { row: logicalWallRow, col: logicalWallCol, orientation: 'h' };
         }
       }
@@ -345,9 +345,9 @@ function getWallFromPosition(x, y, threshold, orientation) {
       if (Math.abs(relX - edgeX) < CELL_SIZE * threshold) {
         const visRow = Math.floor(relY / CELL_SIZE);
         if (visRow >= 0 && visRow < GRID_SIZE - 1) {
-          // 将视觉坐标转换为逻辑坐标
-          const logicalWallRow = logicalRow(visRow);
-          const logicalWallCol = logicalCol(visCol);
+          // 将视觉坐标转换为逻辑坐标（使用两个相邻视觉行/列的最小逻辑值）
+          const logicalWallRow = Math.min(logicalRow(visRow), logicalRow(visRow + 1));
+          const logicalWallCol = Math.min(logicalCol(visCol), logicalCol(visCol + 1));
           return { row: logicalWallRow, col: logicalWallCol, orientation: 'v' };
         }
       }
@@ -763,16 +763,21 @@ function drawRoundedWall(x, y, width, height, isPlayer1, isHover = false) {
 function drawWalls() {
   for (const wall of gameState.walls) {
     const isPlayer1 = wall.player === 0;
-    const vRow = visualRow(wall.row);
-    const vCol = visualCol(wall.col);
+    // 计算相邻逻辑行列的视觉坐标，用 min/max 找到正确的视觉位置
+    const vRow0 = visualRow(wall.row);
+    const vRow1 = visualRow(wall.row + 1);
+    const vCol0 = visualCol(wall.col);
+    const vCol1 = visualCol(wall.col + 1);
 
     if (wall.orientation === 'h') {
-      const x = GRID_OFFSET + vCol * CELL_SIZE;
-      const y = GRID_OFFSET + (vRow + 1) * CELL_SIZE - WALL_THICKNESS / 2;
+      // 水平墙：在两行之间的边界，跨两列
+      const x = GRID_OFFSET + Math.min(vCol0, vCol1) * CELL_SIZE;
+      const y = GRID_OFFSET + Math.max(vRow0, vRow1) * CELL_SIZE - WALL_THICKNESS / 2;
       drawRoundedWall(x, y, CELL_SIZE * 2, WALL_THICKNESS, isPlayer1);
     } else {
-      const x = GRID_OFFSET + (vCol + 1) * CELL_SIZE - WALL_THICKNESS / 2;
-      const y = GRID_OFFSET + vRow * CELL_SIZE;
+      // 垂直墙：在两列之间的边界，跨两行
+      const x = GRID_OFFSET + Math.max(vCol0, vCol1) * CELL_SIZE - WALL_THICKNESS / 2;
+      const y = GRID_OFFSET + Math.min(vRow0, vRow1) * CELL_SIZE;
       drawRoundedWall(x, y, WALL_THICKNESS, CELL_SIZE * 2, isPlayer1);
     }
   }
@@ -784,16 +789,18 @@ function drawHoverWall() {
 
   const wall = gameState.hoverWall;
   const isPlayer1 = gameState.currentPlayer === 0;
-  const vRow = visualRow(wall.row);
-  const vCol = visualCol(wall.col);
+  const vRow0 = visualRow(wall.row);
+  const vRow1 = visualRow(wall.row + 1);
+  const vCol0 = visualCol(wall.col);
+  const vCol1 = visualCol(wall.col + 1);
 
   if (wall.orientation === 'h') {
-    const x = GRID_OFFSET + vCol * CELL_SIZE;
-    const y = GRID_OFFSET + (vRow + 1) * CELL_SIZE - WALL_THICKNESS / 2;
+    const x = GRID_OFFSET + Math.min(vCol0, vCol1) * CELL_SIZE;
+    const y = GRID_OFFSET + Math.max(vRow0, vRow1) * CELL_SIZE - WALL_THICKNESS / 2;
     drawRoundedWall(x, y, CELL_SIZE * 2, WALL_THICKNESS, isPlayer1, true);
   } else {
-    const x = GRID_OFFSET + (vCol + 1) * CELL_SIZE - WALL_THICKNESS / 2;
-    const y = GRID_OFFSET + vRow * CELL_SIZE;
+    const x = GRID_OFFSET + Math.max(vCol0, vCol1) * CELL_SIZE - WALL_THICKNESS / 2;
+    const y = GRID_OFFSET + Math.min(vRow0, vRow1) * CELL_SIZE;
     drawRoundedWall(x, y, WALL_THICKNESS, CELL_SIZE * 2, isPlayer1, true);
   }
 }

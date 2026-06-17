@@ -238,12 +238,17 @@ async function confirmCreateRoom() {
   }
 }
 
+// 加入房间防重复点击
+let joiningRoom = false;
+
 // 加入房间
 async function joinRoomByName(roomId, roomName) {
+  if (joiningRoom) return;
   if (!supabaseClient) {
     alert('联机服务未初始化，请刷新页面重试');
     return;
   }
+  joiningRoom = true;
 
   console.log('加入房间:', roomName, 'ID:', roomId);
 
@@ -321,7 +326,9 @@ async function joinRoomByName(roomId, roomName) {
     // 启动心跳
     startHeartbeat();
 
+    joiningRoom = false;
   } catch (error) {
+    joiningRoom = false;
     console.error('加入房间失败:', error);
     alert('加入房间失败: ' + (error.message || '请检查网络连接'));
   }
@@ -510,6 +517,7 @@ function subscribeToRoom(roomId) {
         const isOpponent = (multiplayerState.isHost && key === 'guest') || (!multiplayerState.isHost && key === 'host');
         if (isOpponent) {
           showToast('对手已离开房间');
+          stopHeartbeat();
           if (!gameState || !gameState.gameOver) {
             showOpponentLeftModal();
           }
@@ -584,6 +592,8 @@ function handleGameStateUpdate(newState) {
 
   if (opponentLeft && newState.player2Joined && !opponentLeftNotified) {
     opponentLeftNotified = true;
+    // 停止心跳，防止过期状态覆盖对手的离开标记
+    stopHeartbeat();
     if (newState.gameOver) {
       // 游戏已结束，对手离开：只显示 toast，不阻断胜负流程
       showToast('对手已离开房间');
@@ -1647,6 +1657,10 @@ function _leaveRoomImmediate() {
           // 房主仍在，重置 player2Joined 让房间可被新玩家加入
           _dbg('multiplayer.js:_leaveRoomImmediate', 'Guest:房主在线,标记离开', { roomId });
           supabaseClient.from('rooms').update({ game_state: gs }).eq('id', roomId)
+            .then(() => {
+              // DB 更新完成后再刷新房间列表
+              setTimeout(() => { try { fetchRoomList(); } catch (_) {} }, 500);
+            })
             .catch(err => console.error('离开房间清理出错:', err));
         }
       })

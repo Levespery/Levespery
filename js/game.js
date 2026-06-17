@@ -554,15 +554,6 @@ function showWinMessage(winnerIndex) {
   modal.classList.add('show');
   console.log('胜利弹窗已显示');
 }
-  } else {
-    // 其他模式
-    const winner = gameState.currentPlayer === 0 ? '黑方' : '白方';
-    message.textContent = `${winner}获胜！`;
-  }
-
-  modal.classList.add('show');
-  console.log('胜利弹窗已显示');
-}
 
 // 保存移动历史
 function saveMoveHistory(type, data) {

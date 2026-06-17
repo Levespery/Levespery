@@ -491,6 +491,17 @@ function subscribeToRoom(roomId) {
         showOpponentLeftModal();
       }
     })
+    .on('broadcast', { event: 'guest_left' }, () => {
+      // #region agent log
+      _dbg('multiplayer.js:subscribeToRoom', 'broadcast:guest_left', {});
+      // #endregion
+      if (multiplayerState.isOnline && multiplayerState.isHost) {
+        showToast('对手已离开房间');
+        if (!gameState || !gameState.gameOver) {
+          showOpponentLeftModal();
+        }
+      }
+    })
     .on('presence', { event: 'leave' }, ({ key }) => {
       // #region agent log
       _dbg('multiplayer.js:subscribeToRoom', 'presence:leave', { key });
@@ -1236,7 +1247,7 @@ function leaveRoomSync() {
     } catch (_) {}
   } else if (cachedGameState) {
     // 加入者关闭浏览器：只标记自己离开
-    const stateToSend = { ...cachedGameState, guestActive: false, lastHeartbeat: now };
+    const stateToSend = { ...cachedGameState, guestActive: false, player2Joined: false, lastHeartbeat: now };
     delete stateToSend.restartRequest;
 
     try {
@@ -1584,12 +1595,12 @@ function _leaveRoomImmediate() {
     return;
   }
 
-  // 广播房间删除通知（对手通过此事件知道房主离开）
-  if (multiplayerState.subscription && multiplayerState.isHost) {
+  // 广播房间删除/离开通知（对手通过此事件知道对方离开）
+  if (multiplayerState.subscription) {
     try {
       multiplayerState.subscription.send({
         type: 'broadcast',
-        event: 'room_deleted',
+        event: multiplayerState.isHost ? 'room_deleted' : 'guest_left',
         payload: {}
       });
     } catch (_) {}

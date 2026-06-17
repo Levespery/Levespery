@@ -60,8 +60,15 @@ let aiMode = false;
 // 缓存最新游戏状态，供 leaveRoomSync（浏览器关闭时的同步请求）使用
 let cachedGameState = null;
 
-// 防止 Realtime 回传自己刚写入的状态时覆盖本地操作
-let isSyncing = false;
+// #region agent log
+const _DBG = 'http://127.0.0.1:7337/ingest/6c759ce4-4672-4e6a-ac30-de089d8ba20c';
+const _SID = '6c759ce4-4672-4e6a-ac30-de089d8ba20c';
+function _dbg(loc, msg, data) {
+  fetch(_DBG, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': _SID },
+    body: JSON.stringify({ sessionId: _SID, location: loc, message: msg, data: data || {}, timestamp: Date.now() })
+  }).catch(() => {});
+}
+// #endregion
 
 // 创建房间
 async function createRoom() {
@@ -405,47 +412,73 @@ function unsubscribeRoomList() {
   }
 }
 
-// 订阅房间变化
+// 订阅房间变化（使用 Broadcast + Presence，不依赖 postgres_changes）
 function subscribeToRoom(roomId) {
-  multiplayerState.subscription = supabaseClient
-    .channel(`room-${roomId}`)
-    .on(
-      'postgres_changes',
-      {
-        event: 'UPDATE',
-        schema: 'public',
-        table: 'rooms',
-        filter: `id=eq.${roomId}`
-      },
-      (payload) => {
-        handleGameStateUpdate(payload.new.game_state);
+  const channel = supabaseClient.channel(`room-${roomId}`, {
+    config: { presence: { key: multiplayerState.isHost ? 'host' : 'guest' } }
+  });
+
+  channel
+    .on('broadcast', { event: 'state_update' }, ({ payload }) => {
+      // #region agent log
+      _dbg('multiplayer.js:subscribeToRoom', 'broadcast:state_update', { currentPlayer: payload.state?.currentPlayer, gameOver: payload.state?.gameOver });
+      // #endregion
+      handleGameStateUpdate(payload.state);
+    })
+    .on('broadcast', { event: 'room_deleted' }, () => {
+      // #region agent log
+      _dbg('multiplayer.js:subscribeToRoom', 'broadcast:room_deleted', {});
+      // #endregion
+      if (multiplayerState.isOnline && !multiplayerState.isHost) {
+        showToast('对手已离开房间');
+        showOpponentLeftModal();
       }
-    )
-    .on(
-      'postgres_changes',
-      {
-        event: 'DELETE',
-        schema: 'public',
-        table: 'rooms',
-        filter: `id=eq.${roomId}`
-      },
-      () => {
-        // 房间被删除（房主离开）：提示对手已离开
-        if (multiplayerState.isOnline && !multiplayerState.isHost) {
+    })
+    .on('presence', { event: 'leave' }, ({ key }) => {
+      // #region agent log
+      _dbg('multiplayer.js:subscribeToRoom', 'presence:leave', { key });
+      // #endregion
+      if (multiplayerState.isOnline) {
+        const isOpponent = (multiplayerState.isHost && key === 'guest') || (!multiplayerState.isHost && key === 'host');
+        if (isOpponent) {
           showToast('对手已离开房间');
-          showOpponentLeftModal();
+          if (!gameState || !gameState.gameOver) {
+            showOpponentLeftModal();
+          }
         }
       }
-    )
-    .subscribe();
+    })
+    .on('presence', { event: 'join' }, ({ key }) => {
+      // #region agent log
+      _dbg('multiplayer.js:subscribeToRoom', 'presence:join', { key });
+      // #endregion
+      const isOpponent = (multiplayerState.isHost && key === 'guest') || (!multiplayerState.isHost && key === 'host');
+      if (isOpponent && multiplayerState.isOnline) {
+        document.getElementById('opponent-left-modal').classList.remove('show');
+        showToast('对手已上线');
+      }
+    })
+    .subscribe(async (status) => {
+      // #region agent log
+      _dbg('multiplayer.js:subscribeToRoom', 'subscribe status', { status });
+      // #endregion
+      if (status === 'SUBSCRIBED') {
+        await channel.track({
+          online_at: new Date().toISOString(),
+          role: multiplayerState.isHost ? 'host' : 'guest'
+        });
+      }
+    });
+
+  multiplayerState.subscription = channel;
 }
 
-// 处理游戏状态更新
+// 处理游戏状态更新（来自 Broadcast，不含自己的操作）
 function handleGameStateUpdate(newState) {
-  // 自己写的状态回环，跳过
-  if (isSyncing) return;
 
-  console.log('收到状态更新:', newState);
+  // #region agent log
+  _dbg('multiplayer.js:handleGameStateUpdate', '收到更新', { gameOver: newState.gameOver, currentPlayer: newState.currentPlayer, hostActive: newState.hostActive, guestActive: newState.guestActive, player2Joined: newState.player2Joined });
+  // #endregion
 
   // 缓存最新状态
   const oldState = cachedGameState ? { ...cachedGameState } : null;
@@ -682,25 +715,37 @@ async function continueWaiting() {
     .catch(err => console.error('更新房间状态失败:', err));
 }
 
-// 同步游戏状态到服务器
+// 同步游戏状态到服务器（Broadcast 广播 + DB 持久化）
 async function syncGameState() {
   if (!multiplayerState.isOnline) return;
 
-  isSyncing = true;
-  try {
-    const stateToSync = {
-      players: gameState.players,
-      currentPlayer: gameState.currentPlayer,
-      walls: gameState.walls,
-      gameOver: gameState.gameOver,
-      lastMoveBy: gameState.lastMoveBy,
-      hostColor: multiplayerState.isHost ? multiplayerState.myPlayerIndex : (1 - multiplayerState.myPlayerIndex),
-      positionsSwapped: gameState.positionsSwapped || false,
-      player2Joined: true,
-      hostActive: true,
-      guestActive: true
-    };
+  // #region agent log
+  _dbg('multiplayer.js:syncGameState', '同步状态', { gameOver: gameState.gameOver, currentPlayer: gameState.currentPlayer });
+  // #endregion
+  const stateToSync = {
+    players: gameState.players,
+    currentPlayer: gameState.currentPlayer,
+    walls: gameState.walls,
+    gameOver: gameState.gameOver,
+    lastMoveBy: gameState.lastMoveBy,
+    hostColor: multiplayerState.isHost ? multiplayerState.myPlayerIndex : (1 - multiplayerState.myPlayerIndex),
+    positionsSwapped: gameState.positionsSwapped || false,
+    player2Joined: true,
+    hostActive: true,
+    guestActive: true
+  };
 
+  // 1) 通过 Broadcast 实时发送给对手（不回传给自己）
+  if (multiplayerState.subscription) {
+    multiplayerState.subscription.send({
+      type: 'broadcast',
+      event: 'state_update',
+      payload: { state: stateToSync }
+    });
+  }
+
+  // 2) 同时写入 DB 供持久化和重连恢复
+  try {
     const { error } = await supabaseClient
       .from('rooms')
       .update({ game_state: stateToSync })
@@ -709,13 +754,10 @@ async function syncGameState() {
     if (error) {
       console.error('同步状态失败:', error);
     } else {
-      // 同步成功后缓存，供浏览器关闭时使用
       cachedGameState = { ...stateToSync };
     }
   } catch (error) {
     console.error('同步状态错误:', error);
-  } finally {
-    isSyncing = false;
   }
 }
 
@@ -1134,12 +1176,25 @@ document.addEventListener('visibilitychange', () => {
 
 // 内部：切换UI + 异步清理数据库（不阻塞UI）
 function _leaveRoomImmediate() {
+  _dbg('multiplayer.js:_leaveRoomImmediate', '进入', { isOnline: multiplayerState.isOnline, roomId: multiplayerState.roomId, isHost: multiplayerState.isHost });
+
   if (!multiplayerState.isOnline || !multiplayerState.roomId) {
     returnToLobby();
     return;
   }
 
-  // 先取消订阅
+  // 广播房间删除通知（对手通过此事件知道房主离开）
+  if (multiplayerState.subscription && multiplayerState.isHost) {
+    try {
+      multiplayerState.subscription.send({
+        type: 'broadcast',
+        event: 'room_deleted',
+        payload: {}
+      });
+    } catch (_) {}
+  }
+
+  // 取消订阅（会自动清除 Presence 状态）
   if (multiplayerState.subscription) {
     try { supabaseClient.removeChannel(multiplayerState.subscription); } catch (_) {}
     multiplayerState.subscription = null;
@@ -1154,23 +1209,35 @@ function _leaveRoomImmediate() {
   // 异步清理数据库（不阻塞UI）
   if (isHost) {
     // 房主离开：直接删除房间，guest 通过 DELETE 事件收到通知
+    _dbg('multiplayer.js:_leaveRoomImmediate', '房主DELETE房间', { roomId });
     supabaseClient.from('rooms').delete().eq('id', roomId)
-      .catch(err => console.error('删除房间出错:', err));
+      .then(() => _dbg('multiplayer.js:_leaveRoomImmediate', '房主DELETE完成', { roomId }))
+      .catch(err => { console.error('删除房间出错:', err); _dbg('multiplayer.js:_leaveRoomImmediate', '房主DELETE失败', { roomId, err: String(err) }); });
   } else {
     // 加入者离开：标记自己离开
+    _dbg('multiplayer.js:_leaveRoomImmediate', 'Guest查询房间', { roomId });
     supabaseClient
       .from('rooms')
       .select('game_state')
       .eq('id', roomId)
       .single()
-      .then(({ data: room }) => {
-        if (!room) return;
+      .then(({ data: room, error }) => {
+        if (error || !room) { _dbg('multiplayer.js:_leaveRoomImmediate', 'Guest:房间已不存在', { roomId }); return; }
         const gs = { ...room.game_state };
         gs.guestActive = false;
-        if (gs.player2Joined) gs.player2Joined = false;
-        supabaseClient.from('rooms').update({ game_state: gs }).eq('id', roomId);
+        // 如果房主也已离开，直接删除房间
+        if (gs.hostActive === false) {
+          _dbg('multiplayer.js:_leaveRoomImmediate', 'Guest:房主已离线,删除房间', { roomId });
+          supabaseClient.from('rooms').delete().eq('id', roomId)
+            .catch(err => console.error('删除房间出错:', err));
+        } else {
+          // 房主仍在，只标记自己离开，不重置 player2Joined（避免房间复活为"等待中"）
+          _dbg('multiplayer.js:_leaveRoomImmediate', 'Guest:房主在线,标记离开', { roomId });
+          supabaseClient.from('rooms').update({ game_state: gs }).eq('id', roomId)
+            .catch(err => console.error('离开房间清理出错:', err));
+        }
       })
-      .catch(err => console.error('离开房间清理出错:', err));
+      .catch(err => { console.error('离开房间清理出错:', err); _dbg('multiplayer.js:_leaveRoomImmediate', 'Guest查询失败', { roomId, err: String(err) }); });
   }
 }
 

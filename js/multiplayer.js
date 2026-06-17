@@ -441,6 +441,10 @@ function handleGameStateUpdate(newState) {
       : (newState.hostActive === true);
     if (opponentWasOffline && opponentNowOnline) {
       document.getElementById('opponent-left-modal').classList.remove('show');
+      // 恢复回合指示器
+      if (gameState) {
+        updateTurnIndicator();
+      }
       // 取消本地的离开计时器（对方通过实时更新已经知道我们还在）
       if (leaveTimer) {
         clearTimeout(leaveTimer);
@@ -585,7 +589,7 @@ function showOpponentLeftModal() {
   document.getElementById('opponent-left-modal').classList.add('show');
 }
 
-// 继续等待：重置房间为等待状态，回到等待界面
+// 继续等待：保持游戏界面，等待对手回来
 async function continueWaiting() {
   document.getElementById('opponent-left-modal').classList.remove('show');
 
@@ -600,45 +604,31 @@ async function continueWaiting() {
     return;
   }
 
-  // 房主：重置房间为等待状态，等待新玩家加入
-  try {
-    const { data: room } = await supabaseClient
-      .from('rooms')
-      .select('game_state')
-      .eq('id', multiplayerState.roomId)
-      .single();
+  // 房主：保持游戏界面，只声明自己仍在线
+  const indicator = document.getElementById('turn-indicator');
+  indicator.textContent = '等待对手返回...';
+  indicator.style.background = '#fff3cd';
 
-    const gs = room ? { ...room.game_state } : {};
-
-    // 重置为等待状态
-    gs.player2Joined = false;
-    gs.guestActive = false;
-    gs.gameOver = false;
-    gs.hostActive = true;
-    delete gs.restartRequest;
-    delete gs.lastMoveBy;
-
-    // 重置棋盘状态（棋子位置、墙壁、回合），保留颜色分配
-    gs.players = [
-      { row: 0, col: 4, walls: 10 },
-      { row: 8, col: 4, walls: 10 }
-    ];
-    gs.currentPlayer = 0;
-    gs.walls = [];
-    delete gs.positionsSwapped;
-
-    await supabaseClient
-      .from('rooms')
-      .update({ game_state: gs })
-      .eq('id', multiplayerState.roomId);
-
-    cachedGameState = gs;
-  } catch (err) {
-    console.error('重置房间状态失败:', err);
-  }
-
-  // 回到等待界面
-  showWaitingRoom(multiplayerState.roomName);
+  // 异步更新 hostActive=true，不重置棋盘和 player2Joined
+  supabaseClient
+    .from('rooms')
+    .select('game_state')
+    .eq('id', multiplayerState.roomId)
+    .single()
+    .then(({ data: room }) => {
+      if (!room) return;
+      const gs = { ...room.game_state };
+      gs.hostActive = true;
+      gs.guestActive = false;
+      // 保留 player2Joined=true，保留棋盘状态
+      delete gs.restartRequest;
+      supabaseClient
+        .from('rooms')
+        .update({ game_state: gs })
+        .eq('id', multiplayerState.roomId);
+      cachedGameState = gs;
+    })
+    .catch(err => console.error('更新房间状态失败:', err));
 }
 
 // 同步游戏状态到服务器
@@ -706,6 +696,7 @@ function startGame(initialState, isOnline) {
   console.log('开始游戏, 在线模式:', isOnline);
 
   document.getElementById('room-container').style.display = 'none';
+  document.getElementById('join-room-container').style.display = 'none';
   document.getElementById('waiting-container').style.display = 'none';
   document.getElementById('game-container').style.display = 'block';
 
@@ -1073,14 +1064,57 @@ document.addEventListener('visibilitychange', () => {
   }
 });
 
+// 内部：切换UI + 异步清理数据库（不阻塞UI）
+function _leaveRoomImmediate() {
+  if (!multiplayerState.isOnline || !multiplayerState.roomId) {
+    returnToLobby();
+    return;
+  }
+
+  // 先取消订阅
+  if (multiplayerState.subscription) {
+    supabaseClient.removeChannel(multiplayerState.subscription);
+    multiplayerState.subscription = null;
+  }
+
+  const roomId = multiplayerState.roomId;
+  const isHost = multiplayerState.isHost;
+
+  // 立即切换UI到大厅
+  returnToLobby();
+
+  // 异步清理数据库（不阻塞UI）
+  supabaseClient
+    .from('rooms')
+    .select('game_state')
+    .eq('id', roomId)
+    .single()
+    .then(({ data: room }) => {
+      if (!room) return;
+      const gs = { ...room.game_state };
+      if (isHost) {
+        gs.hostActive = false;
+      } else {
+        gs.guestActive = false;
+        if (gs.player2Joined) gs.player2Joined = false;
+      }
+      if (!gs.hostActive && !gs.guestActive) {
+        supabaseClient.from('rooms').delete().eq('id', roomId);
+      } else {
+        supabaseClient.from('rooms').update({ game_state: gs }).eq('id', roomId);
+      }
+    })
+    .catch(err => console.error('离开房间清理出错:', err));
+}
+
 // 取消等待
 function cancelWaiting() {
-  leaveRoom();
+  _leaveRoomImmediate();
 }
 
 // 离开游戏
 function leaveGame() {
-  leaveRoom();
+  _leaveRoomImmediate();
 }
 
 // 请求再来一局

@@ -104,8 +104,6 @@ h1 {
   border-radius: 20px;
   min-width: 140px;
   text-align: center;
-  display: inline-block;
-  line-height: 1.4;
 }
 
 /* 墙壁选择器 */
@@ -672,6 +670,37 @@ canvas {
 
   .rules li {
     font-size: 0.8rem;
+  }
+
+  .room-name-display {
+    padding: 14px;
+    gap: 8px;
+  }
+
+  .room-name-display strong {
+    font-size: 1.26rem;
+  }
+
+  .room-name-display span {
+    font-size: 0.66rem;
+  }
+
+  .player-slots {
+    gap: 21px;
+  }
+
+  .player-slot {
+    padding: 10px 17px;
+    min-width: 126px;
+    gap: 6px;
+  }
+
+  .slot-label {
+    font-size: 0.63rem;
+  }
+
+  .slot-status {
+    font-size: 0.63rem;
   }
 }
 

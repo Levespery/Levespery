@@ -406,23 +406,6 @@ const AI = {
               });
             }
           }
-          // 斜向移动
-          const perpDirs = dr !== 0 ? [[0, -1], [0, 1]] : [[-1, 0], [1, 0]];
-          for (const [pdr, pdc] of perpDirs) {
-            const diagRow = newRow + pdr;
-            const diagCol = newCol + pdc;
-            const diagKey = `${diagRow},${diagCol}`;
-            if (diagRow >= 0 && diagRow < GRID_SIZE && diagCol >= 0 && diagCol < GRID_SIZE && !visited.has(diagKey)) {
-              if (!isBlocked(newRow, newCol, diagRow, diagCol)) {
-                visited.add(diagKey);
-                queue.push({
-                  row: diagRow,
-                  col: diagCol,
-                  path: [...path, { row: diagRow, col: diagCol }]
-                });
-              }
-            }
-          }
         } else {
           visited.add(key);
           queue.push({
@@ -512,7 +495,7 @@ const AI = {
     return humanPathIncrease - aiPathPenalty + bonus;
   },
 
-  // 找到任何有效移动（包括跳跃和斜向）
+  // 找到任何有效移动（包括跳跃）
   findAnyValidMove() {
     const player = gameState.players[1];
     const opponent = gameState.players[0];
@@ -531,17 +514,6 @@ const AI = {
             if (jumpRow >= 0 && jumpRow < GRID_SIZE && jumpCol >= 0 && jumpCol < GRID_SIZE) {
               if (!isBlocked(newRow, newCol, jumpRow, jumpCol)) {
                 return { type: 'move', row: jumpRow, col: jumpCol };
-              }
-            }
-            // 尝试斜向移动
-            const perpDirs = dr !== 0 ? [[0, -1], [0, 1]] : [[-1, 0], [1, 0]];
-            for (const [pdr, pdc] of perpDirs) {
-              const diagRow = newRow + pdr;
-              const diagCol = newCol + pdc;
-              if (diagRow >= 0 && diagRow < GRID_SIZE && diagCol >= 0 && diagCol < GRID_SIZE) {
-                if (!isBlocked(newRow, newCol, diagRow, diagCol)) {
-                  return { type: 'move', row: diagRow, col: diagCol };
-                }
               }
             }
           } else {

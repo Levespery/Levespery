@@ -203,19 +203,6 @@ function handleMoveClick(x, y) {
     if (isBlocked(player.row, player.col, midRow, midCol)) return;
     if (isBlocked(midRow, midCol, row, col)) return;
     isJump = true;
-  } else if (absDr === 1 && absDc === 1) {
-    // 斜向移动
-    const opponentAtRow = (player.row + dr === opponent.row && player.col === opponent.col);
-    const opponentAtCol = (player.row === opponent.row && player.col + dc === opponent.col);
-    if (!opponentAtRow && !opponentAtCol) return;
-    if (opponentAtRow) {
-      if (isBlocked(player.row, player.col, player.row + dr, player.col)) return;
-      if (isBlocked(player.row + dr, player.col, row, col)) return;
-    } else {
-      if (isBlocked(player.row, player.col, player.row, player.col + dc)) return;
-      if (isBlocked(player.row, player.col + dc, row, col)) return;
-    }
-    isJump = true;
   } else {
     return;
   }
@@ -826,23 +813,14 @@ function drawHoverWall() {
 function drawValidMoves() {
   if (gameState.gameOver) return;
 
+  // 只在自己的回合显示可移动路径
+  if (multiplayerState.isOnline && gameState.currentPlayer !== multiplayerState.myPlayerIndex) return;
+  if (aiMode && gameState.currentPlayer !== 0) return;
+
   const player = gameState.players[gameState.currentPlayer];
   const opponentIndex = gameState.currentPlayer === 0 ? 1 : 0;
   const opponent = gameState.players[opponentIndex];
   const directions = [[-1, 0], [1, 0], [0, -1], [0, 1]];
-  const drawn = new Set();
-
-  function drawDot(r, c) {
-    const key = `${r},${c}`;
-    if (drawn.has(key)) return;
-    drawn.add(key);
-    const x = GRID_OFFSET + visualCol(c) * CELL_SIZE + CELL_SIZE / 2;
-    const y = GRID_OFFSET + visualRow(r) * CELL_SIZE + CELL_SIZE / 2;
-    ctx.beginPath();
-    ctx.arc(x, y, 8, 0, Math.PI * 2);
-    ctx.fillStyle = COLORS.validMove;
-    ctx.fill();
-  }
 
   for (const [dr, dc] of directions) {
     const newRow = player.row + dr;
@@ -854,24 +832,25 @@ function drawValidMoves() {
           // 尝试跳跃
           const jumpRow = newRow + dr;
           const jumpCol = newCol + dc;
+
           if (jumpRow >= 0 && jumpRow < GRID_SIZE && jumpCol >= 0 && jumpCol < GRID_SIZE) {
             if (!isBlocked(newRow, newCol, jumpRow, jumpCol)) {
-              drawDot(jumpRow, jumpCol);
-            }
-          }
-          // 斜向移动
-          const perpDirs = dr !== 0 ? [[0, -1], [0, 1]] : [[-1, 0], [1, 0]];
-          for (const [pdr, pdc] of perpDirs) {
-            const diagRow = newRow + pdr;
-            const diagCol = newCol + pdc;
-            if (diagRow >= 0 && diagRow < GRID_SIZE && diagCol >= 0 && diagCol < GRID_SIZE) {
-              if (!isBlocked(newRow, newCol, diagRow, diagCol)) {
-                drawDot(diagRow, diagCol);
-              }
+              const x = GRID_OFFSET + visualCol(jumpCol) * CELL_SIZE + CELL_SIZE / 2;
+              const y = GRID_OFFSET + visualRow(jumpRow) * CELL_SIZE + CELL_SIZE / 2;
+              ctx.beginPath();
+              ctx.arc(x, y, 8, 0, Math.PI * 2);
+              ctx.fillStyle = COLORS.validMove;
+              ctx.fill();
             }
           }
         } else {
-          drawDot(newRow, newCol);
+          // 普通移动位置
+          const x = GRID_OFFSET + visualCol(newCol) * CELL_SIZE + CELL_SIZE / 2;
+          const y = GRID_OFFSET + visualRow(newRow) * CELL_SIZE + CELL_SIZE / 2;
+          ctx.beginPath();
+          ctx.arc(x, y, 8, 0, Math.PI * 2);
+          ctx.fillStyle = COLORS.validMove;
+          ctx.fill();
         }
       }
     }

@@ -232,8 +232,9 @@ function handleMoveClick(x, y) {
   // 检查是否获胜
   if (checkWin()) {
     gameState.gameOver = true;
+    gameState.winner = gameState.currentPlayer;
     SoundManager.playWinSound();
-    showWinMessage();
+    showWinMessage(gameState.currentPlayer);
     render();
     return;
   }
@@ -528,7 +529,7 @@ function updateWallCounts() {
 }
 
 // 显示胜利消息
-function showWinMessage() {
+function showWinMessage(winnerIndex) {
   console.log('显示胜利消息，当前玩家:', gameState.currentPlayer);
   const modal = document.getElementById('win-modal');
   const message = document.getElementById('win-message');
@@ -540,6 +541,19 @@ function showWinMessage() {
     } else {
       message.textContent = '你输了！';
     }
+  } else if (winnerIndex !== undefined) {
+    // 在线模式：使用传入的胜者信息
+    const isMyWin = winnerIndex === multiplayerState.myPlayerIndex;
+    message.textContent = isMyWin ? '你赢了！' : '你输了！';
+  } else {
+    // 本地模式
+    const winner = gameState.currentPlayer === 0 ? '黑方' : '白方';
+    message.textContent = `${winner}获胜！`;
+  }
+
+  modal.classList.add('show');
+  console.log('胜利弹窗已显示');
+}
   } else {
     // 其他模式
     const winner = gameState.currentPlayer === 0 ? '黑方' : '白方';

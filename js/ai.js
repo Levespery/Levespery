@@ -574,8 +574,9 @@ const AI = {
 
     if (checkWin()) {
       gameState.gameOver = true;
+      gameState.winner = 1;
       SoundManager.playWinSound();
-      showWinMessage();
+      showWinMessage(1);
       render();
       return;
     }

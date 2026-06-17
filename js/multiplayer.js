@@ -60,6 +60,9 @@ let aiMode = false;
 // 缓存最新游戏状态，供 leaveRoomSync（浏览器关闭时的同步请求）使用
 let cachedGameState = null;
 
+// 对手状态轮询定时器（Realtime 不可用时的备用方案）
+let opponentPollTimer = null;
+
 // 创建房间
 async function createRoom() {
   console.log('点击创建房间');
@@ -196,6 +199,7 @@ async function confirmCreateRoom() {
 
     showWaitingRoom(roomName);
     subscribeToRoom(data.id);
+    startOpponentPolling(data.id);
 
   } catch (error) {
     console.error('创建房间失败:', error);
@@ -264,6 +268,7 @@ async function joinRoomByName(roomId, roomName) {
 
     startGame(updatedState, true);
     subscribeToRoom(data.id);
+    startOpponentPolling(data.id);
 
   } catch (error) {
     console.error('加入房间失败:', error);
@@ -435,6 +440,46 @@ function subscribeToRoom(roomId) {
       }
     )
     .subscribe();
+}
+
+// 启动对手状态轮询（Realtime 不可用时的备用方案）
+function startOpponentPolling(roomId) {
+  stopOpponentPolling();
+  opponentPollTimer = setInterval(async () => {
+    if (!multiplayerState.isOnline || multiplayerState.roomId !== roomId) {
+      stopOpponentPolling();
+      return;
+    }
+    try {
+      const { data: room, error } = await supabaseClient
+        .from('rooms')
+        .select('id, game_state')
+        .eq('id', roomId)
+        .single();
+
+      if (error || !room) {
+        // 房间不存在（房主删除了）— 加入者收到通知
+        if (!multiplayerState.isHost) {
+          showToast('对手已离开房间');
+          showOpponentLeftModal();
+          stopOpponentPolling();
+        }
+        return;
+      }
+
+      handleGameStateUpdate(room.game_state);
+    } catch (err) {
+      console.error('轮询房间状态失败:', err);
+    }
+  }, 3000);
+}
+
+// 停止对手状态轮询
+function stopOpponentPolling() {
+  if (opponentPollTimer) {
+    clearInterval(opponentPollTimer);
+    opponentPollTimer = null;
+  }
 }
 
 // 处理游戏状态更新
@@ -1069,7 +1114,8 @@ function reassertActive() {
 
 // 返回大厅（UI 层面）
 function returnToLobby() {
-  // 重新订阅房间列表
+  // 停止对手轮询 + 取消订阅
+  stopOpponentPolling();
   try { unsubscribeRoomList(); } catch (_) {}
   try { subscribeRoomList(); } catch (_) {}
   try { fetchRoomList(); } catch (_) {}
@@ -1131,7 +1177,8 @@ function _leaveRoomImmediate() {
     return;
   }
 
-  // 先取消订阅
+  // 先取消订阅 + 停止轮询
+  stopOpponentPolling();
   if (multiplayerState.subscription) {
     try { supabaseClient.removeChannel(multiplayerState.subscription); } catch (_) {}
     multiplayerState.subscription = null;

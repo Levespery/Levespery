@@ -27,7 +27,7 @@ const SoundManager = {
     return this.audioContext && this.audioContext.state === 'running';
   },
 
-  // 棋子移动音效（清脆）
+  // 棋子移动音效（比墙体音稍清脆）
   playMoveSound() {
     if (!this.ensureContext()) return;
 
@@ -37,19 +37,24 @@ const SoundManager = {
 
       const oscillator = ctx.createOscillator();
       const gainNode = ctx.createGain();
+      const filter = ctx.createBiquadFilter();
 
-      oscillator.connect(gainNode);
+      oscillator.connect(filter);
+      filter.connect(gainNode);
       gainNode.connect(ctx.destination);
 
-      oscillator.type = 'sine';
-      oscillator.frequency.setValueAtTime(800, now);
-      oscillator.frequency.exponentialRampToValueAtTime(600, now + 0.1);
+      filter.type = 'lowpass';
+      filter.frequency.setValueAtTime(600, now);
 
-      gainNode.gain.setValueAtTime(0.3, now);
-      gainNode.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
+      oscillator.type = 'sine';
+      oscillator.frequency.setValueAtTime(400, now);
+      oscillator.frequency.exponentialRampToValueAtTime(180, now + 0.12);
+
+      gainNode.gain.setValueAtTime(0.45, now);
+      gainNode.gain.exponentialRampToValueAtTime(0.01, now + 0.14);
 
       oscillator.start(now);
-      oscillator.stop(now + 0.15);
+      oscillator.stop(now + 0.14);
     } catch (e) {
       console.error('播放移动音效失败:', e);
     }
@@ -92,7 +97,7 @@ const SoundManager = {
     }
   },
 
-  // 跳跃音效
+  // 跳跃音效（沉闷）
   playJumpSound() {
     if (!this.ensureContext()) return;
 
@@ -102,9 +107,14 @@ const SoundManager = {
 
       const oscillator = ctx.createOscillator();
       const gainNode = ctx.createGain();
+      const filter = ctx.createBiquadFilter();
 
-      oscillator.connect(gainNode);
+      oscillator.connect(filter);
+      filter.connect(gainNode);
       gainNode.connect(ctx.destination);
+
+      filter.type = 'lowpass';
+      filter.frequency.setValueAtTime(500, now);
 
       oscillator.type = 'sine';
       oscillator.frequency.setValueAtTime(400, now);

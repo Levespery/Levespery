@@ -68,6 +68,9 @@ let multiplayerState = {
 // 人机对战状态
 let aiMode = false;
 
+// 对手离开提示标志（防止重复提示）
+let opponentLeftNotified = false;
+
 // 缓存最新游戏状态，供 leaveRoomSync（浏览器关闭时的同步请求）使用
 let cachedGameState = null;
 
@@ -568,7 +571,8 @@ function handleGameStateUpdate(newState) {
   const imHost = multiplayerState.isHost;
   const opponentLeft = imHost ? (newState.guestActive === false) : (newState.hostActive === false);
 
-  if (opponentLeft && newState.player2Joined) {
+  if (opponentLeft && newState.player2Joined && !opponentLeftNotified) {
+    opponentLeftNotified = true;
     if (newState.gameOver) {
       // 游戏已结束，对手离开：只显示 toast，不阻断胜负流程
       showToast('对手已离开房间');
@@ -589,6 +593,7 @@ function handleGameStateUpdate(newState) {
       ? (newState.guestActive === true)
       : (newState.hostActive === true);
     if (opponentWasOffline && opponentNowOnline) {
+      opponentLeftNotified = false;
       document.getElementById('opponent-left-modal').classList.remove('show');
       cancelOpponentWait();
       showToast('对方已回来，游戏继续');
@@ -612,6 +617,9 @@ function handleGameStateUpdate(newState) {
 
   // ── 以下为游戏中的状态同步，必须有 gameState ──
   if (!gameState) return;
+
+  // 在更新 gameState 之前保存旧的 gameOver 状态
+  const wasGameOver = gameState.gameOver;
 
   // 检测再来一局请求
   if (newState.restartRequest !== undefined && newState.restartRequest !== multiplayerState.myPlayerIndex) {
@@ -714,7 +722,7 @@ function handleGameStateUpdate(newState) {
   }
 
   // 检查游戏结束
-  if (newState.gameOver && !gameState.gameOver) {
+  if (newState.gameOver && !wasGameOver) {
     SoundManager.playWinSound();
     showWinMessage(newState.winner);
   }
@@ -731,6 +739,7 @@ function showRestartNotify() {
 // 对方离开倒计时
 let opponentWaitTimer = null;
 let opponentWaitCountdown = null;
+let opponentLeftTime = 0;
 
 // 显示对方已离开弹窗
 function showOpponentLeftModal() {
@@ -741,7 +750,10 @@ function showOpponentLeftModal() {
   const restartBtn = document.getElementById('btn-restart');
   if (restartBtn) restartBtn.textContent = '再来一局';
 
-  // 重置弹窗状态
+  // 记录对手离开时间，开始30秒倒计时
+  opponentLeftTime = Date.now();
+
+  // 重置弹窗状态 - 直接显示倒计时和两个按钮
   document.getElementById('opponent-left-title').textContent = '对方已离开';
   document.getElementById('opponent-left-desc').textContent = '你的对手已离开房间';
   document.getElementById('opponent-left-waiting').style.display = 'none';
@@ -751,11 +763,40 @@ function showOpponentLeftModal() {
   `;
 
   document.getElementById('opponent-left-modal').classList.add('show');
+
+  // 立即开始倒计时
+  _startOpponentLeftCountdown();
+}
+
+// 内部：启动倒计时（从剩余时间开始）
+function _startOpponentLeftCountdown() {
+  cancelOpponentWait();
+
+  const countdownEl = document.getElementById('opponent-left-countdown');
+  const elapsed = Math.floor((Date.now() - opponentLeftTime) / 1000);
+  let remaining = Math.max(30 - elapsed, 0);
+  countdownEl.textContent = remaining;
+
+  if (remaining <= 0) {
+    showOpponentOffline();
+    return;
+  }
+
+  opponentWaitCountdown = setInterval(() => {
+    remaining--;
+    countdownEl.textContent = remaining;
+
+    if (remaining <= 0) {
+      clearInterval(opponentWaitCountdown);
+      opponentWaitCountdown = null;
+      showOpponentOffline();
+    }
+  }, 1000);
 }
 
 // 开始等待对手（30秒倒计时）
 function startWaitingForOpponent() {
-  // 切换到等待状态
+  // 切换到等待状态 - 显示倒计时和加载动画
   document.getElementById('opponent-left-waiting').style.display = 'block';
   document.getElementById('opponent-left-buttons').innerHTML = `
     <button class="btn" onclick="leaveGame()">返回大厅</button>
@@ -788,22 +829,7 @@ function startWaitingForOpponent() {
       .catch(() => {});
   }
 
-  // 开始30秒倒计时
-  let countdown = 30;
-  const countdownEl = document.getElementById('opponent-left-countdown');
-  countdownEl.textContent = countdown;
-
-  opponentWaitCountdown = setInterval(() => {
-    countdown--;
-    countdownEl.textContent = countdown;
-
-    if (countdown <= 0) {
-      // 倒计时结束，显示对方已离线
-      clearInterval(opponentWaitCountdown);
-      opponentWaitCountdown = null;
-      showOpponentOffline();
-    }
-  }, 1000);
+  // 倒计时已在 showOpponentLeftModal 中启动，此处无需重复
 }
 
 // 显示对方已离线（只有返回大厅选项）
@@ -916,6 +942,8 @@ function showWaitingRoom(roomName) {
 // 开始游戏
 function startGame(initialState, isOnline) {
   console.log('开始游戏, 在线模式:', isOnline);
+
+  opponentLeftNotified = false;
 
   document.getElementById('room-container').style.display = 'none';
   document.getElementById('join-room-container').style.display = 'none';
@@ -1486,6 +1514,9 @@ function returnToLobby() {
   try { unsubscribeRoomList(); } catch (_) {}
   try { subscribeRoomList(); } catch (_) {}
   try { fetchRoomList(); } catch (_) {}
+
+  // 延迟再次获取房间列表，确保异步数据库操作已完成
+  setTimeout(() => { try { fetchRoomList(); } catch (_) {} }, 1000);
 
   multiplayerState = {
     isOnline: false,

@@ -154,7 +154,7 @@ h1 {
 }
 
 .wall-type span {
-  font-size: 0.75rem;
+  font-size: 1.125rem;
   font-weight: 600;
   color: #495057;
   line-height: 1;
@@ -163,19 +163,19 @@ h1 {
 }
 
 .wall-preview {
-  width: 56px;
+  width: 74px;
   height: 14px;
   background: linear-gradient(180deg, #3a3a3a 0%, #1a1a1a 100%);
   border-radius: 7px;
   border: 1.5px solid #000;
-  margin-top: 12px;
+  margin-top: 30px;
   box-shadow: 0 2px 4px rgba(0,0,0,0.3);
 }
 
 .wall-preview.vertical {
   width: 14px;
-  height: 56px;
-  margin-top: 0;
+  height: 64px;
+  margin-top: 6px;
 }
 
 canvas {
@@ -907,19 +907,19 @@ canvas {
   }
 
   .wall-type span {
-    font-size: 0.7rem;
+    font-size: 1.05rem;
   }
 
   .wall-preview {
-    width: 44px;
+    width: 50px;
     height: 10px;
-    margin-top: 14px;
+    margin-top: 24px;
   }
 
   .wall-preview.vertical {
     width: 10px;
-    height: 44px;
-    margin-top: 0;
+    height: 50px;
+    margin-top: 6px;
   }
 
   /* 控制按钮 */

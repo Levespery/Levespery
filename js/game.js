@@ -507,7 +507,8 @@ function updateTurnIndicator() {
     }
   } else {
     // 本地双人模式
-    indicator.textContent = `轮到: 玩家 ${gameState.currentPlayer + 1}`;
+    const name = gameState.currentPlayer === 0 ? '黑方' : '白方';
+    indicator.textContent = `轮到：${name}玩家`;
     indicator.style.background = '#ffeaa7';
   }
 }
@@ -541,7 +542,7 @@ function showWinMessage(winnerIndex) {
     } else {
       message.textContent = '你输了！';
     }
-  } else if (winnerIndex !== undefined) {
+  } else if (multiplayerState.isOnline && winnerIndex !== undefined) {
     // 在线模式：使用传入的胜者信息
     const isMyWin = winnerIndex === multiplayerState.myPlayerIndex;
     message.textContent = isMyWin ? '你赢了！' : '你输了！';

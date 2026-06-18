@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+  <title>路墙棋 - Levesper</title>
+  <link rel="stylesheet" href="css/style.css">
+  <script src="js/supabase.min.js"></script>
+</head>
+<body>
+  <!-- 房间选择界面 -->
+  <div class="container" id="room-container">
+    <h1>路墙棋</h1>
+    <p class="subtitle">Levesper</p>
+
+    <div class="room-section">
+      <h2>在线对战</h2>
+      <p class="room-desc">创建或加入房间，与好友远程对战</p>
+
+      <div class="room-actions">
+        <button class="btn btn-primary" onclick="showCreateRoom()">创建房间</button>
+        <button class="btn btn-join" onclick="showJoinRoom()">加入房间</button>
+        <div class="divider">或</div>
+      </div>
+
+      <div class="local-play">
+        <button class="btn btn-ai" onclick="startAIPlay()">人机对战</button>
+        <button class="btn btn-local" onclick="startLocalPlay()">本地双人对战</button>
+      </div>
+
+      <div class="other-games" style="margin-top:20px;padding-top:20px;border-top:1px solid #eee;">
+        <a href="../index.html" class="btn" style="background:#6c5ce7;width:100%;max-width:300px;display:inline-block;text-decoration:none;color:white;">返回首页</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- 加入房间界面 -->
+  <div class="container" id="join-room-container" style="display:none">
+    <div class="back-button" onclick="cancelJoinRoom()">
+      <span class="back-arrow">←</span>
+      <span>返回</span>
+    </div>
+    <h1>路墙棋</h1>
+    <p class="subtitle">Levesper</p>
+
+    <div class="join-room-section">
+      <h2>加入房间</h2>
+      <div id="room-list" class="room-list">
+        <p class="room-list-empty">目前无房间</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- 创建房间界面 -->
+  <div class="container" id="create-room-container" style="display:none">
+    <h1>路墙棋</h1>
+    <p class="subtitle">Levesper</p>
+
+    <div class="create-room-section">
+      <h2>创建房间</h2>
+      <div class="create-room-form">
+        <input type="text" id="room-name-input" placeholder="输入房间名称" maxlength="20">
+        <div class="create-room-buttons">
+          <button class="btn btn-primary" onclick="confirmCreateRoom()">确定创建</button>
+          <button class="btn btn-cancel" onclick="cancelCreateRoom()">取消</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 等待界面 -->
+  <div class="container" id="waiting-container" style="display:none">
+    <h1>路墙棋</h1>
+    <p class="subtitle">Levesper</p>
+
+    <div class="waiting-section">
+      <h2>等待对手加入</h2>
+      <div class="room-name-display">
+        <span>房间名称：</span>
+        <strong id="room-name-text">------</strong>
+      </div>
+      <div class="player-slots">
+        <div class="player-slot" id="slot-black">
+          <span class="slot-color black"></span>
+          <span class="slot-label">黑方：</span>
+          <span class="slot-status" id="slot-black-status">等待中</span>
+        </div>
+        <div class="player-slot" id="slot-white">
+          <span class="slot-color white"></span>
+          <span class="slot-label">白方：</span>
+          <span class="slot-status" id="slot-white-status">等待中</span>
+        </div>
+      </div>
+      <p class="waiting-hint">等待其他玩家加入...</p>
+      <div class="loading-spinner"></div>
+      <button class="btn btn-cancel" onclick="cancelWaiting()">取消</button>
+    </div>
+  </div>
+
+  <!-- 游戏界面 -->
+  <div class="container" id="game-container" style="display:none">
+    <h1>路墙棋</h1>
+    <p class="subtitle">Levesper</p>
+
+    <div class="room-info" id="room-info">
+      <span>房间：<strong id="current-room-name">------</strong></span>
+      <span id="player-role">你是黑方</span>
+    </div>
+
+
+    <div class="game-info">
+      <div class="player-info" id="player1">
+        <span class="player-color black"></span>
+        <span class="player-name black">黑方</span>
+        <span class="wall-count black">墙：<span id="walls1">10</span></span>
+      </div>
+      <div class="current-turn" id="turn-indicator">轮到: 玩家 1</div>
+      <div class="player-info" id="player2">
+        <span class="player-color white"></span>
+        <span class="player-name white">白方</span>
+        <span class="wall-count gray">墙：<span id="walls2">10</span></span>
+      </div>
+    </div>
+
+    <canvas id="gameCanvas" width="570" height="570"></canvas>
+
+    <!-- 手机端拖动预览 -->
+    <div class="drag-preview" id="drag-preview" style="display:none">
+      <div class="drag-preview-wall"></div>
+    </div>
+
+    <!-- 手机端墙壁选择器 -->
+    <div class="wall-selector" id="wall-selector">
+      <div class="wall-type" id="wall-h" draggable="true">
+        <div class="wall-preview horizontal"></div>
+        <span>水平墙</span>
+      </div>
+      <div class="wall-type" id="wall-v" draggable="true">
+        <div class="wall-preview vertical"></div>
+        <span>竖直墙</span>
+      </div>
+    </div>
+
+    <div class="controls">
+      <button class="btn btn-undo" id="undo-btn" onclick="undoMove()" style="display:none">悔棋</button>
+      <button class="btn" onclick="leaveGame()">返回大厅</button>
+    </div>
+
+    <div class="rules">
+      <h3>游戏规则</h3>
+      <ul>
+        <li>每位玩家有 <strong>10</strong> 面墙</li>
+        <li>每回合可选择：<strong>移动棋子</strong> 或 <strong>放置墙壁</strong></li>
+        <li>棋子每次移动 <strong>1 格</strong>（上下左右）</li>
+        <li>无障碍物时可<strong>跳过对手</strong>的棋子</li>
+        <li>墙壁放置在格子之间，阻挡移动</li>
+        <li>不能完全封死对手的路径</li>
+        <li>先到达对方底线的玩家获胜！</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="modal" id="win-modal">
+    <div class="modal-content">
+      <h2 id="win-message">玩家 1 获胜！</h2>
+      <div class="restart-notify" id="restart-notify" style="display:none">
+        <div class="notify-bubble">对方希望和你再来一局！</div>
+      </div>
+      <div class="win-buttons">
+        <button class="btn btn-restart" id="btn-restart" onclick="requestRestart()">再来一局</button>
+        <button class="btn" onclick="leaveGame()">返回大厅</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 对方已离开弹窗 -->
+  <div class="modal" id="opponent-left-modal">
+    <div class="modal-content">
+      <h2 id="opponent-left-title">对方已离开</h2>
+      <p style="color:#636e72;margin-bottom:20px;" id="opponent-left-desc">你的对手已离开房间</p>
+      <div id="opponent-left-waiting" style="display:none;">
+        <p style="color:#0984e3;margin-bottom:15px;">等待对手返回... <span id="opponent-left-countdown">30</span>秒</p>
+        <div class="loading-spinner" style="margin:0 auto 15px;"></div>
+      </div>
+      <div class="win-buttons" id="opponent-left-buttons">
+        <button class="btn btn-restart" onclick="startWaitingForOpponent()">等待对手</button>
+        <button class="btn" onclick="leaveGame()">返回大厅</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/sound.js?t=1750284200"></script>
+  <script src="js/game.js?t=1750284200"></script>
+  <script src="js/ai.js?t=1750284200"></script>
+  <script src="js/multiplayer.js?t=1750284200"></script>
+</body>
+</html>

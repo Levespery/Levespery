@@ -1,0 +1,1198 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: #d5d9e0;
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 20px;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.container {
+  background: rgba(235, 237, 241, 0.97);
+  border-radius: 16px;
+  padding: 28px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+  max-width: 660px;
+  width: 100%;
+  position: relative;
+}
+
+h1 {
+  text-align: center;
+  color: #2d3436;
+  font-size: 2.2rem;
+  margin-bottom: 4px;
+}
+
+.subtitle {
+  text-align: center;
+  color: #636e72;
+  font-size: 0.9rem;
+  margin-bottom: 20px;
+}
+
+.game-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  padding: 12px;
+  background: #f8f9fa;
+  border-radius: 8px;
+}
+
+.player-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.9rem;
+}
+
+.player-name.black {
+  color: #1a1a1a;
+  font-weight: bold;
+}
+
+.player-name.white {
+  color: #666;
+  font-weight: bold;
+}
+
+.player-color {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 2px solid #2d3436;
+}
+
+.player-color.black {
+  background: #1a1a1a;
+}
+
+.player-color.white {
+  background: #ffffff;
+  border-color: #999;
+}
+
+.wall-count {
+  color: #636e72;
+  font-weight: 700;
+}
+
+.current-turn {
+  font-weight: bold;
+  color: #2d3436;
+  font-size: 1.2rem;
+  padding: 6px 16px;
+  min-height: 36px;
+  line-height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #ffeaa7;
+  border-radius: 20px;
+  min-width: 140px;
+  text-align: center;
+}
+
+/* 墙壁选择器 */
+.wall-selector {
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+  margin-top: 12px;
+  margin-bottom: 16px;
+  padding: 14px 20px;
+  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+  border-radius: 12px;
+  border: 1px solid #e0e0e0;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.wall-type {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 130px;
+  height: 100px;
+  background: linear-gradient(180deg, #ffffff 0%, #f5f5f5 100%);
+  border: 2px solid #d0d0d0;
+  border-radius: 12px;
+  cursor: grab;
+  transition: all 0.2s ease;
+  user-select: none;
+  touch-action: none;
+  -webkit-tap-highlight-color: transparent;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+
+.wall-type:hover {
+  border-color: #0984e3;
+  background: linear-gradient(180deg, #e8f4fd 0%, #d4eaf7 100%);
+  box-shadow: 0 4px 12px rgba(9,132,227,0.2);
+  transform: translateY(-2px);
+}
+
+.wall-type:active {
+  cursor: grabbing;
+  transform: scale(0.96);
+  box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+}
+
+.wall-type span {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: #495057;
+  line-height: 1;
+  margin-top: auto;
+  letter-spacing: 0.5px;
+}
+
+.wall-preview {
+  width: 74px;
+  height: 14px;
+  background: linear-gradient(180deg, #3a3a3a 0%, #1a1a1a 100%);
+  border-radius: 7px;
+  border: 1.5px solid #000;
+  margin-top: 30px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+}
+
+.wall-preview.vertical {
+  width: 14px;
+  height: 64px;
+  margin-top: 6px;
+}
+
+canvas {
+  display: block;
+  margin: 0 auto 16px;
+  border: 3px solid #2d3436;
+  border-radius: 8px;
+  cursor: pointer;
+  width: 100%;
+  height: auto;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* 手机端拖动预览 */
+.drag-preview {
+  position: fixed;
+  pointer-events: none;
+  z-index: 1000;
+  transform: translate(-50%, -50%);
+}
+
+.drag-preview-wall {
+  width: 80px;
+  height: 14px;
+  background: rgba(100, 100, 100, 0.6);
+  border: 2px dashed #666;
+  border-radius: 7px;
+}
+
+.drag-preview-wall.vertical {
+  width: 14px;
+  height: 80px;
+}
+
+.controls {
+  text-align: center;
+  margin-bottom: 16px;
+}
+
+.btn {
+  padding: 14px 38px;
+  background: #0984e3;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 1.2rem;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.btn:hover {
+  background: #0773c5;
+}
+
+.btn-undo {
+  background: #e17055;
+}
+
+.btn-undo:hover {
+  background: #d63031;
+}
+
+.controls {
+  display: flex;
+  justify-content: center;
+  gap: 15px;
+}
+
+.rules {
+  background: #f8f9fa;
+  padding: 16px;
+  border-radius: 8px;
+}
+
+.rules h3 {
+  color: #2d3436;
+  margin-bottom: 12px;
+}
+
+.rules ul {
+  list-style: none;
+  padding: 0;
+}
+
+.rules li {
+  padding: 4px 0;
+  color: #636e72;
+  font-size: 0.9rem;
+}
+
+.rules li::before {
+  content: "• ";
+  color: #0984e3;
+  font-weight: bold;
+}
+
+.modal {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.7);
+  justify-content: center;
+  align-items: center;
+  z-index: 100;
+}
+
+.modal.show {
+  display: flex;
+}
+
+.modal-content {
+  background: white;
+  padding: 40px;
+  border-radius: 16px;
+  text-align: center;
+  animation: popIn 0.3s ease;
+}
+
+.modal-content h2 {
+  color: #2d3436;
+  margin-bottom: 20px;
+  font-size: 1.8rem;
+}
+
+.win-buttons {
+  display: flex;
+  gap: 15px;
+  justify-content: center;
+  margin-top: 20px;
+}
+
+.btn-restart {
+  background: #00b894;
+}
+
+.btn-restart:hover {
+  background: #00a381;
+}
+
+.restart-notify {
+  margin-bottom: 15px;
+}
+
+.notify-bubble {
+  display: inline-block;
+  padding: 8px 16px;
+  background: #e8f5e9;
+  border: 2px solid #4caf50;
+  border-radius: 20px;
+  color: #2e7d32;
+  font-size: 0.9rem;
+  font-weight: 500;
+  animation: bounce 0.6s ease infinite alternate;
+}
+
+@keyframes bounce {
+  from { transform: translateY(0); }
+  to { transform: translateY(-5px); }
+}
+
+@keyframes popIn {
+  from {
+    transform: scale(0.8);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+/* 房间选择界面 */
+.room-section {
+  text-align: center;
+  padding: 40px 20px;
+}
+
+.room-section h2 {
+  color: #2d3436;
+  margin-bottom: 10px;
+  font-size: 1.8rem;
+}
+
+.room-desc {
+  color: #636e72;
+  margin-bottom: 30px;
+  font-size: 1.1rem;
+}
+
+.room-actions {
+  margin-bottom: 30px;
+}
+
+.btn-primary {
+  background: #00b894;
+  width: 100%;
+  max-width: 300px;
+  padding: 16px 38px;
+  font-size: 1.3rem;
+  margin-bottom: 20px;
+}
+
+.btn-primary:hover {
+  background: #00a381;
+}
+
+.btn-join {
+  background: #0984e3;
+  width: 100%;
+  max-width: 300px;
+  padding: 16px 38px;
+  font-size: 1.3rem;
+  margin-bottom: 20px;
+}
+
+.btn-join:hover {
+  background: #0773c5;
+}
+
+.back-button {
+  position: absolute;
+  top: 20px;
+  left: 20px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #636e72;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: color 0.2s;
+  z-index: 10;
+}
+
+.back-button:hover {
+  color: #2d3436;
+}
+
+.back-arrow {
+  font-size: 1.4rem;
+  line-height: 1;
+}
+
+.join-room-section {
+  margin-top: 20px;
+}
+
+.join-room-section h2 {
+  margin-bottom: 20px;
+  font-size: 1.6rem;
+  color: #2d3436;
+}
+
+.divider {
+  color: #636e72;
+  margin: 20px 0;
+  font-size: 0.9rem;
+  position: relative;
+}
+
+.divider::before,
+.divider::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  width: 80px;
+  height: 1px;
+  background: #ddd;
+}
+
+.divider::before {
+  left: calc(50% - 100px);
+}
+
+.divider::after {
+  right: calc(50% - 100px);
+}
+
+.join-group {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  max-width: 300px;
+  margin: 0 auto;
+}
+
+.join-group input {
+  flex: 1;
+  padding: 12px 16px;
+  border: 2px solid #ddd;
+  border-radius: 8px;
+  font-size: 1rem;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  text-align: center;
+}
+
+.join-group input:focus {
+  outline: none;
+  border-color: #0984e3;
+}
+
+.btn-secondary {
+  background: #0984e3;
+  padding: 12px 24px;
+}
+
+.btn-secondary:hover {
+  background: #0773c5;
+}
+
+.local-play {
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px solid #eee;
+}
+
+.btn-ai {
+  background: #e17055;
+  width: 100%;
+  max-width: 300px;
+  margin-bottom: 10px;
+}
+
+.btn-ai:hover {
+  background: #d63031;
+}
+
+.btn-local {
+  background: #636e72;
+  width: 100%;
+  max-width: 300px;
+}
+
+.btn-local:hover {
+  background: #535c60;
+}
+
+/* 等待界面 */
+.waiting-section {
+  text-align: center;
+  padding: 40px 20px;
+}
+
+.waiting-section h2 {
+  color: #2d3436;
+  margin-bottom: 20px;
+  font-size: 1.5rem;
+}
+
+.room-code-display {
+  background: #f8f9fa;
+  padding: 20px;
+  border-radius: 12px;
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+
+.room-code-display span {
+  color: #636e72;
+  font-size: 0.95rem;
+}
+
+.room-code-display strong {
+  color: #2d3436;
+  font-size: 2rem;
+  letter-spacing: 4px;
+  font-family: monospace;
+}
+
+.btn-copy {
+  padding: 8px 16px;
+  background: #0984e3;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  transition: background 0.2s;
+}
+
+.btn-copy:hover {
+  background: #0773c5;
+}
+
+.waiting-hint {
+  color: #636e72;
+  margin-bottom: 20px;
+  font-size: 0.9rem;
+}
+
+.loading-spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid #eee;
+  border-top: 4px solid #0984e3;
+  border-radius: 50%;
+  margin: 20px auto;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.btn-cancel {
+  background: #d63031;
+  margin-top: 20px;
+}
+
+.btn-cancel:hover {
+  background: #c0392b;
+}
+
+/* 游戏房间信息 */
+.room-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  padding: 10px 16px;
+  background: #e8f5e9;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  color: #2d3436;
+}
+
+.room-info strong {
+  font-family: monospace;
+  letter-spacing: 2px;
+  color: #00b894;
+}
+
+#player-role {
+  font-weight: 500;
+  color: #0984e3;
+}
+
+/* 房间列表样式 */
+.room-list-section {
+  margin-top: 30px;
+  padding-top: 20px;
+  border-top: 1px solid #eee;
+}
+
+.room-list-section h3 {
+  color: #2d3436;
+  margin-bottom: 15px;
+  font-size: 1.3rem;
+}
+
+.room-list {
+  max-height: 300px;
+  overflow-y: auto;
+  border: 1px solid #eee;
+  border-radius: 8px;
+}
+
+.room-list-empty {
+  color: #636e72;
+  padding: 20px;
+  text-align: center;
+  font-size: 0.9rem;
+}
+
+.room-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 19px;
+  border-bottom: 1px solid #eee;
+  transition: background 0.2s;
+}
+
+.room-item:hover {
+  background: #f8f9fa;
+}
+
+.room-item:last-child {
+  border-bottom: none;
+}
+
+.room-item-name {
+  font-weight: 500;
+  color: #2d3436;
+  font-size: 1.05rem;
+}
+
+.room-item-status {
+  font-size: 0.85rem;
+  color: #636e72;
+  margin-right: 10px;
+}
+
+.room-item-join {
+  padding: 6px 18px;
+  background: #0984e3;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: background 0.2s;
+  white-space: nowrap;
+}
+
+.room-item-join:hover {
+  background: #0773c5;
+}
+
+/* 创建房间界面样式 */
+.create-room-section {
+  text-align: center;
+  padding: 40px 20px;
+}
+
+.create-room-section h2 {
+  color: #2d3436;
+  margin-bottom: 30px;
+  font-size: 1.5rem;
+}
+
+.create-room-form {
+  max-width: 400px;
+  margin: 0 auto;
+}
+
+.create-room-form input {
+  width: 100%;
+  padding: 14px 16px;
+  border: 2px solid #ddd;
+  border-radius: 8px;
+  font-size: 1rem;
+  margin-bottom: 20px;
+}
+
+.create-room-form input:focus {
+  outline: none;
+  border-color: #0984e3;
+}
+
+.create-room-buttons {
+  display: flex;
+  gap: 15px;
+  justify-content: center;
+  align-items: stretch;
+}
+
+.create-room-buttons .btn,
+.create-room-buttons .btn-cancel {
+  flex: 1;
+  max-width: 160px;
+  margin: 0;
+  width: auto;
+  padding: 14px 28px;
+  font-size: 1.1rem;
+}
+
+/* 等待界面玩家位置样式 */
+.room-name-display {
+  background: #f8f9fa;
+  padding: 20px;
+  border-radius: 12px;
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+
+.room-name-display span {
+  color: #636e72;
+  font-size: 0.95rem;
+}
+
+.room-name-display strong {
+  color: #2d3436;
+  font-size: 1.8rem;
+}
+
+.player-slots {
+  display: flex;
+  justify-content: center;
+  gap: 30px;
+  margin-bottom: 20px;
+}
+
+.player-slot {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 24px;
+  background: #f8f9fa;
+  border-radius: 8px;
+  min-width: 180px;
+}
+
+.slot-color {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 2px solid #2d3436;
+}
+
+.slot-color.black {
+  background: #1a1a1a;
+}
+
+.slot-color.white {
+  background: #ffffff;
+  border-color: #999;
+}
+
+.slot-label {
+  color: #636e72;
+  font-size: 0.9rem;
+}
+
+.slot-status {
+  font-weight: 500;
+  color: #00b894;
+}
+
+/* Toast 提示 */
+.toast {
+  position: fixed;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%) translateY(-120%);
+  background: rgba(0, 0, 0, 0.82);
+  color: #fff;
+  padding: 10px 24px;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  z-index: 10000;
+  opacity: 0;
+  transition: transform 0.3s ease, opacity 0.3s ease;
+  pointer-events: none;
+}
+.toast.show {
+  transform: translateX(-50%) translateY(0);
+  opacity: 1;
+}
+
+/* ============ 手机端响应式 (< 768px) ============ */
+@media (max-width: 768px) {
+  body {
+    padding: 0;
+    align-items: flex-start;
+  }
+
+  .container {
+    padding: 7px;
+    border-radius: 0;
+    box-shadow: none;
+    max-width: 100%;
+  }
+
+  h1 {
+    font-size: 1.6rem;
+    margin-bottom: 2px;
+  }
+
+  .subtitle {
+    font-size: 0.75rem;
+    margin-bottom: 8px;
+  }
+
+  .game-info {
+    margin-bottom: 6px;
+    padding: 6px 8px;
+    border-radius: 6px;
+  }
+
+  .player-info {
+    font-size: 0.8rem;
+    gap: 4px;
+  }
+
+  .player-color {
+    width: 14px;
+    height: 14px;
+    border-width: 1.5px;
+  }
+
+  .wall-count {
+    font-size: 0.75rem;
+  }
+
+  .current-turn {
+    font-size: 0.95rem;
+    padding: 5px 12px;
+    min-height: 32px;
+    line-height: 32px;
+    min-width: 100px;
+  }
+
+  /* 棋盘填满屏幕，保持正方形 */
+  canvas {
+    width: calc(100vw - 14px) !important;
+    height: calc(100vw - 14px) !important;
+    max-width: calc(100vw - 14px);
+    max-height: calc(100vw - 14px);
+    margin: 4px auto 8px;
+    border-width: 2px;
+    border-radius: 6px;
+  }
+
+  /* 墙壁选择器 */
+  .wall-selector {
+    margin: 0 0 8px;
+    padding: 8px 6px;
+    gap: 12px;
+    border-radius: 6px;
+  }
+
+  .wall-type {
+    width: 100px;
+    height: 70px;
+    border-width: 1.5px;
+    border-radius: 6px;
+  }
+
+  .wall-type span {
+    font-size: 1.05rem;
+  }
+
+  .wall-preview {
+    width: 50px;
+    height: 10px;
+    margin-top: 24px;
+  }
+
+  .wall-preview.vertical {
+    width: 10px;
+    height: 50px;
+    margin-top: 6px;
+  }
+
+  /* 控制按钮 */
+  .controls {
+    margin-bottom: 8px;
+    gap: 10px;
+  }
+
+  .btn {
+    padding: 12px 28px;
+    font-size: 1.1rem;
+    min-height: 44px;
+    border-radius: 10px;
+  }
+
+  .btn-primary, .btn-join {
+    padding: 14px 32px;
+    font-size: 1.2rem;
+    max-width: 100%;
+    min-height: 50px;
+  }
+
+  .btn-ai, .btn-local {
+    max-width: 100%;
+    min-height: 50px;
+  }
+
+  .btn-undo {
+    font-size: 1rem;
+    padding: 10px 20px;
+  }
+
+  /* 游戏规则 */
+  .rules {
+    padding: 10px;
+    border-radius: 6px;
+  }
+
+  .rules h3 {
+    font-size: 0.9rem;
+    margin-bottom: 8px;
+  }
+
+  .rules li {
+    font-size: 0.8rem;
+    padding: 3px 0;
+  }
+
+  /* 房间界面 */
+  .room-section {
+    padding: 20px 10px;
+  }
+
+  .room-section h2 {
+    font-size: 1.3rem;
+    margin-bottom: 8px;
+  }
+
+  .room-desc {
+    font-size: 0.9rem;
+    margin-bottom: 20px;
+  }
+
+  .room-actions {
+    margin-bottom: 20px;
+  }
+
+  .divider {
+    margin: 15px 0;
+  }
+
+  .local-play {
+    margin-top: 15px;
+    padding-top: 15px;
+  }
+
+  /* 等待界面 */
+  .waiting-section {
+    padding: 20px 10px;
+  }
+
+  .waiting-section h2 {
+    font-size: 1.2rem;
+    margin-bottom: 15px;
+  }
+
+  .room-name-display {
+    padding: 12px;
+    border-radius: 8px;
+    margin-bottom: 12px;
+  }
+
+  .room-name-display strong {
+    font-size: 1.3rem;
+  }
+
+  .room-name-display span {
+    font-size: 0.75rem;
+  }
+
+  .player-slots {
+    gap: 16px;
+    margin-bottom: 15px;
+  }
+
+  .player-slot {
+    padding: 10px 14px;
+    min-width: 120px;
+    border-radius: 6px;
+  }
+
+  .slot-color {
+    width: 14px;
+    height: 14px;
+  }
+
+  .slot-label {
+    font-size: 0.75rem;
+  }
+
+  .slot-status {
+    font-size: 0.75rem;
+  }
+
+  .waiting-hint {
+    font-size: 0.8rem;
+    margin-bottom: 15px;
+  }
+
+  /* 创建房间 */
+  .create-room-section {
+    padding: 20px 10px;
+  }
+
+  .create-room-section h2 {
+    font-size: 1.2rem;
+    margin-bottom: 20px;
+  }
+
+  .create-room-form {
+    max-width: 100%;
+  }
+
+  .create-room-form input {
+    padding: 12px 14px;
+    font-size: 1rem;
+    margin-bottom: 15px;
+  }
+
+  .create-room-buttons {
+    gap: 12px;
+  }
+
+  .create-room-buttons .btn,
+  .create-room-buttons .btn-cancel {
+    padding: 12px 20px;
+    font-size: 1rem;
+    max-width: none;
+    min-height: 48px;
+  }
+
+  /* 加入房间 */
+  .join-room-section {
+    margin-top: 15px;
+  }
+
+  .join-room-section h2 {
+    font-size: 1.2rem;
+    margin-bottom: 15px;
+  }
+
+  .back-button {
+    font-size: 0.9rem;
+    top: 12px;
+    left: 12px;
+  }
+
+  .back-arrow {
+    font-size: 1.2rem;
+  }
+
+  /* 房间列表 */
+  .room-list {
+    max-height: 250px;
+  }
+
+  .room-item {
+    padding: 12px 14px;
+  }
+
+  .room-item-name {
+    font-size: 0.95rem;
+  }
+
+  .room-item-status {
+    font-size: 0.8rem;
+    margin-right: 8px;
+  }
+
+  .room-item-join {
+    padding: 8px 16px;
+    font-size: 0.85rem;
+    min-height: 36px;
+  }
+
+  /* 弹窗 */
+  .modal-content {
+    padding: 24px 20px;
+    margin: 10px;
+    border-radius: 12px;
+  }
+
+  .modal-content h2 {
+    font-size: 1.4rem;
+    margin-bottom: 15px;
+  }
+
+  .win-buttons {
+    gap: 12px;
+    flex-direction: column;
+  }
+
+  .win-buttons .btn {
+    width: 100%;
+    min-height: 48px;
+  }
+
+  /* 房间信息 */
+  .room-info {
+    padding: 8px 12px;
+    font-size: 0.8rem;
+    border-radius: 6px;
+  }
+
+  .room-info strong {
+    font-size: 0.85rem;
+  }
+
+  #player-role {
+    font-size: 0.8rem;
+  }
+
+  /* Toast */
+  .toast {
+    top: 10px;
+    padding: 10px 20px;
+    font-size: 0.9rem;
+    border-radius: 6px;
+  }
+
+  /* 拖动预览 */
+  .drag-preview-wall {
+    width: 70px;
+    height: 12px;
+  }
+
+  .drag-preview-wall.vertical {
+    width: 12px;
+    height: 70px;
+  }
+
+  .loading-spinner {
+    width: 32px;
+    height: 32px;
+    margin: 15px auto;
+  }
+
+  .btn-cancel {
+    margin-top: 15px;
+  }
+
+  .notify-bubble {
+    font-size: 0.85rem;
+    padding: 10px 18px;
+  }
+}

@@ -447,21 +447,21 @@ function handleGameStateUpdate(newState) {
     const myIndex = multiplayerState.myPlayerIndex;
     const movedByOpponent = newState.lastMoveBy !== undefined && newState.lastMoveBy !== myIndex;
     if (movedByOpponent && newState.lastMove) {
-      const { toRow, toCol } = newState.lastMove;
+      const { fromRow, fromCol, toRow, toCol } = newState.lastMove;
       const newPiece = newState.board[toRow] && newState.board[toRow][toCol];
       const oldPiece = oldBoard[toRow] && oldBoard[toRow][toCol];
+      const srcPiece = fromRow >= 0 ? (oldBoard[fromRow] && oldBoard[fromRow][fromCol]) : null;
 
-      if (newPiece && newPiece.promoted && oldPiece && !oldPiece.promoted) {
+      const isPromotion = srcPiece && newPiece &&
+        !srcPiece.promoted && newPiece.promoted &&
+        srcPiece.owner === newPiece.owner;
+
+      if (isPromotion) {
         SoundManager.playStartSound();
-        const fromName = PIECE_FULL_NAMES[oldPiece.type] || PIECE_CHARS[oldPiece.type] || '';
-        const toName = PROMOTED_NAMES[oldPiece.type] || '';
+        const fromName = PIECE_FULL_NAMES[srcPiece.type] || PIECE_CHARS[srcPiece.type] || '';
+        const toName = PROMOTED_NAMES[srcPiece.type] || '';
         showToast(`${fromName} 升变为 ${toName}！`);
-      } else if (newPiece && !newPiece.promoted && oldPiece && oldPiece.type !== newPiece.type) {
-        SoundManager.playStartSound();
-        const fromName = PIECE_FULL_NAMES[oldPiece.type] || PIECE_CHARS[oldPiece.type] || '';
-        const toName = PROMOTED_NAMES[oldPiece.type] || '';
-        showToast(`${fromName} 升变为 ${toName}！`);
-      } else if (newPiece && oldPiece && oldPiece.owner !== newPiece.owner) {
+      } else if (oldPiece && newPiece && oldPiece.owner !== newPiece.owner) {
         SoundManager.playWallSound();
       } else {
         SoundManager.playMoveSound();

@@ -125,6 +125,9 @@ function initGame(initialState, isOnline) {
   // 隐藏悔棋按钮
   hideUndoButton();
 
+  // 更新持子显示
+  updateCapturedPieces();
+
   // 播放开局音效
   SoundManager.playStartSound();
 

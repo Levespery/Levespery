@@ -6,19 +6,19 @@
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
-  <title>路墙棋 - Levesper</title>
+  <title>将棋</title>
   <link rel="stylesheet" href="css/style.css">
   <script src="js/supabase.min.js"></script>
 </head>
 <body>
-  <!-- 房间选择界面 -->
-  <div class="container" id="room-container">
-    <h1>路墙棋</h1>
-    <p class="subtitle">Levesper</p>
+  <!-- 游戏选择首页 -->
+  <div class="container" id="home-container">
+    <h1>将棋</h1>
+    <p class="subtitle">Shogi</p>
 
     <div class="room-section">
       <h2>在线对战</h2>
-      <p class="room-desc">创建或加入房间，与好友远程对战</p>
+      <p class="room-desc">创建或加入房间，与好友远程对弈</p>
 
       <div class="room-actions">
         <button class="btn btn-primary" onclick="showCreateRoom()">创建房间</button>
@@ -28,7 +28,11 @@
 
       <div class="local-play">
         <button class="btn btn-ai" onclick="startAIPlay()">人机对战</button>
-        <button class="btn btn-local" onclick="startLocalPlay()">本地双人对战</button>
+        <button class="btn btn-local" onclick="startLocalPlay()">本地双人对弈</button>
+      </div>
+
+      <div class="other-games">
+        <a href="../index.html" class="btn btn-other">返回首页</a>
       </div>
     </div>
   </div>
@@ -36,11 +40,11 @@
   <!-- 加入房间界面 -->
   <div class="container" id="join-room-container" style="display:none">
     <div class="back-button" onclick="cancelJoinRoom()">
-      <span class="back-arrow">←</span>
+      <span class="back-arrow">&larr;</span>
       <span>返回</span>
     </div>
-    <h1>路墙棋</h1>
-    <p class="subtitle">Levesper</p>
+    <h1>将棋</h1>
+    <p class="subtitle">Shogi</p>
 
     <div class="join-room-section">
       <h2>加入房间</h2>
@@ -52,8 +56,8 @@
 
   <!-- 创建房间界面 -->
   <div class="container" id="create-room-container" style="display:none">
-    <h1>路墙棋</h1>
-    <p class="subtitle">Levesper</p>
+    <h1>将棋</h1>
+    <p class="subtitle">Shogi</p>
 
     <div class="create-room-section">
       <h2>创建房间</h2>
@@ -69,8 +73,8 @@
 
   <!-- 等待界面 -->
   <div class="container" id="waiting-container" style="display:none">
-    <h1>路墙棋</h1>
-    <p class="subtitle">Levesper</p>
+    <h1>将棋</h1>
+    <p class="subtitle">Shogi</p>
 
     <div class="waiting-section">
       <h2>等待对手加入</h2>
@@ -81,12 +85,12 @@
       <div class="player-slots">
         <div class="player-slot" id="slot-black">
           <span class="slot-color black"></span>
-          <span class="slot-label">黑方：</span>
+          <span class="slot-label">玉将：</span>
           <span class="slot-status" id="slot-black-status">等待中</span>
         </div>
         <div class="player-slot" id="slot-white">
           <span class="slot-color white"></span>
-          <span class="slot-label">白方：</span>
+          <span class="slot-label">王将：</span>
           <span class="slot-status" id="slot-white-status">等待中</span>
         </div>
       </div>
@@ -98,47 +102,39 @@
 
   <!-- 游戏界面 -->
   <div class="container" id="game-container" style="display:none">
-    <h1>路墙棋</h1>
-    <p class="subtitle">Levesper</p>
+    <h1>将棋</h1>
+    <p class="subtitle">Shogi</p>
 
     <div class="room-info" id="room-info">
       <span>房间：<strong id="current-room-name">------</strong></span>
-      <span id="player-role">你是黑方</span>
+      <span id="player-role">你是玉将</span>
     </div>
-
 
     <div class="game-info">
       <div class="player-info" id="player1">
         <span class="player-color black"></span>
-        <span class="player-name black">黑方</span>
-        <span class="wall-count black">墙：<span id="walls1">10</span></span>
+        <span class="player-name black">玉将</span>
       </div>
-      <div class="current-turn" id="turn-indicator">轮到: 玩家 1</div>
+      <div class="current-turn" id="turn-indicator">轮到：玉将</div>
       <div class="player-info" id="player2">
         <span class="player-color white"></span>
-        <span class="player-name white">白方</span>
-        <span class="wall-count gray">墙：<span id="walls2">10</span></span>
+        <span class="player-name white">王将</span>
       </div>
     </div>
 
-    <canvas id="gameCanvas" width="570" height="570"></canvas>
-
-    <!-- 手机端拖动预览 -->
-    <div class="drag-preview" id="drag-preview" style="display:none">
-      <div class="drag-preview-wall"></div>
-    </div>
-
-    <!-- 手机端墙壁选择器 -->
-    <div class="wall-selector" id="wall-selector">
-      <div class="wall-type" id="wall-h" draggable="true">
-        <div class="wall-preview horizontal"></div>
-        <span>水平墙</span>
+    <!-- 持子面板 -->
+    <div class="captured-pieces">
+      <div class="captured-panel" id="captured-white">
+        <span class="captured-label">王将持子：</span>
+        <div class="captured-list" id="captured-white-list"></div>
       </div>
-      <div class="wall-type" id="wall-v" draggable="true">
-        <div class="wall-preview vertical"></div>
-        <span>竖直墙</span>
+      <div class="captured-panel" id="captured-black">
+        <span class="captured-label">玉将持子：</span>
+        <div class="captured-list" id="captured-black-list"></div>
       </div>
     </div>
+
+    <canvas id="gameCanvas" width="591" height="591"></canvas>
 
     <div class="controls">
       <button class="btn btn-undo" id="undo-btn" onclick="undoMove()" style="display:none">悔棋</button>
@@ -148,20 +144,21 @@
     <div class="rules">
       <h3>游戏规则</h3>
       <ul>
-        <li>每位玩家有 <strong>10</strong> 面墙</li>
-        <li>每回合可选择：<strong>移动棋子</strong> 或 <strong>放置墙壁</strong></li>
-        <li>棋子每次移动 <strong>1 格</strong>（上下左右）</li>
-        <li>无障碍物时可<strong>跳过对手</strong>的棋子</li>
-        <li>墙壁放置在格子之间，阻挡移动</li>
-        <li>不能完全封死对手的路径</li>
-        <li>先到达对方底线的玩家获胜！</li>
+        <li>玉将执下方，王将执上方</li>
+        <li>每回合移动一枚棋子，或打入一枚持子</li>
+        <li>棋子进入/经过/离开敌阵时可选择<strong>升变</strong></li>
+        <li>吃掉的棋子变为自己的<strong>持子</strong>，可在空位打入</li>
+        <li>同一列不能有两个自己的步兵（<strong>二步禁止</strong>）</li>
+        <li>不能通过打入步兵直接将死对方（<strong>打步诘禁止</strong>）</li>
+        <li>将死对方王将即获胜！</li>
       </ul>
     </div>
   </div>
 
+  <!-- 胜利弹窗 -->
   <div class="modal" id="win-modal">
     <div class="modal-content">
-      <h2 id="win-message">玩家 1 获胜！</h2>
+      <h2 id="win-message">玉将获胜！</h2>
       <div class="restart-notify" id="restart-notify" style="display:none">
         <div class="notify-bubble">对方希望和你再来一局！</div>
       </div>
@@ -188,9 +185,10 @@
     </div>
   </div>
 
-  <script src="js/sound.js?t=1750284200"></script>
-  <script src="js/game.js?t=1750284200"></script>
-  <script src="js/ai.js?t=1750284200"></script>
-  <script src="js/multiplayer.js?t=1750284200"></script>
+  <script src="js/sound.js"></script>
+  <script src="js/shogi-rules.js"></script>
+  <script src="js/shogi-game.js"></script>
+  <script src="js/shogi-ai.js"></script>
+  <script src="js/shogi-online.js"></script>
 </body>
 </html>

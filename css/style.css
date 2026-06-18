@@ -85,11 +85,6 @@ h1 {
   border-color: #999;
 }
 
-.wall-count {
-  color: #636e72;
-  font-weight: 700;
-}
-
 .current-turn {
   font-weight: bold;
   color: #2d3436;
@@ -106,78 +101,6 @@ h1 {
   text-align: center;
 }
 
-/* 墙壁选择器 */
-.wall-selector {
-  display: flex;
-  justify-content: center;
-  gap: 16px;
-  margin-top: 12px;
-  margin-bottom: 16px;
-  padding: 14px 20px;
-  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-  border-radius: 12px;
-  border: 1px solid #e0e0e0;
-  -webkit-user-select: none;
-  user-select: none;
-}
-
-.wall-type {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  width: 130px;
-  height: 100px;
-  background: linear-gradient(180deg, #ffffff 0%, #f5f5f5 100%);
-  border: 2px solid #d0d0d0;
-  border-radius: 12px;
-  cursor: grab;
-  transition: all 0.2s ease;
-  user-select: none;
-  touch-action: none;
-  -webkit-tap-highlight-color: transparent;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-}
-
-.wall-type:hover {
-  border-color: #0984e3;
-  background: linear-gradient(180deg, #e8f4fd 0%, #d4eaf7 100%);
-  box-shadow: 0 4px 12px rgba(9,132,227,0.2);
-  transform: translateY(-2px);
-}
-
-.wall-type:active {
-  cursor: grabbing;
-  transform: scale(0.96);
-  box-shadow: 0 1px 4px rgba(0,0,0,0.1);
-}
-
-.wall-type span {
-  font-size: 1.125rem;
-  font-weight: 600;
-  color: #495057;
-  line-height: 1;
-  margin-top: auto;
-  letter-spacing: 0.5px;
-}
-
-.wall-preview {
-  width: 74px;
-  height: 14px;
-  background: linear-gradient(180deg, #3a3a3a 0%, #1a1a1a 100%);
-  border-radius: 7px;
-  border: 1.5px solid #000;
-  margin-top: 30px;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.3);
-}
-
-.wall-preview.vertical {
-  width: 14px;
-  height: 64px;
-  margin-top: 6px;
-}
-
 canvas {
   display: block;
   margin: 0 auto 16px;
@@ -190,29 +113,10 @@ canvas {
   -webkit-tap-highlight-color: transparent;
 }
 
-/* 手机端拖动预览 */
-.drag-preview {
-  position: fixed;
-  pointer-events: none;
-  z-index: 1000;
-  transform: translate(-50%, -50%);
-}
-
-.drag-preview-wall {
-  width: 80px;
-  height: 14px;
-  background: rgba(100, 100, 100, 0.6);
-  border: 2px dashed #666;
-  border-radius: 7px;
-}
-
-.drag-preview-wall.vertical {
-  width: 14px;
-  height: 80px;
-}
-
 .controls {
-  text-align: center;
+  display: flex;
+  justify-content: center;
+  gap: 15px;
   margin-bottom: 16px;
 }
 
@@ -237,12 +141,6 @@ canvas {
 
 .btn-undo:hover {
   background: #d63031;
-}
-
-.controls {
-  display: flex;
-  justify-content: center;
-  gap: 15px;
 }
 
 .rules {
@@ -351,7 +249,7 @@ canvas {
   }
 }
 
-/* 房间选择界面 */
+/* 首页 */
 .room-section {
   text-align: center;
   padding: 40px 20px;
@@ -399,6 +297,74 @@ canvas {
   background: #0773c5;
 }
 
+.divider {
+  color: #636e72;
+  margin: 20px 0;
+  font-size: 0.9rem;
+  position: relative;
+}
+
+.divider::before,
+.divider::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  width: 80px;
+  height: 1px;
+  background: #ddd;
+}
+
+.divider::before {
+  left: calc(50% - 100px);
+}
+
+.divider::after {
+  right: calc(50% - 100px);
+}
+
+.local-play {
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px solid #eee;
+}
+
+.btn-ai {
+  background: #e17055;
+  width: 100%;
+  max-width: 300px;
+  margin-bottom: 10px;
+}
+
+.btn-ai:hover {
+  background: #d63031;
+}
+
+.btn-local {
+  background: #636e72;
+  width: 100%;
+  max-width: 300px;
+}
+
+.btn-local:hover {
+  background: #535c60;
+}
+
+.other-games {
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px solid #eee;
+}
+
+.btn-other {
+  background: #6c5ce7;
+  width: 100%;
+  max-width: 300px;
+}
+
+.btn-other:hover {
+  background: #5a4bd1;
+}
+
 .back-button {
   position: absolute;
   top: 20px;
@@ -430,208 +396,6 @@ canvas {
   margin-bottom: 20px;
   font-size: 1.6rem;
   color: #2d3436;
-}
-
-.divider {
-  color: #636e72;
-  margin: 20px 0;
-  font-size: 0.9rem;
-  position: relative;
-}
-
-.divider::before,
-.divider::after {
-  content: '';
-  position: absolute;
-  top: 50%;
-  width: 80px;
-  height: 1px;
-  background: #ddd;
-}
-
-.divider::before {
-  left: calc(50% - 100px);
-}
-
-.divider::after {
-  right: calc(50% - 100px);
-}
-
-.join-group {
-  display: flex;
-  gap: 10px;
-  justify-content: center;
-  max-width: 300px;
-  margin: 0 auto;
-}
-
-.join-group input {
-  flex: 1;
-  padding: 12px 16px;
-  border: 2px solid #ddd;
-  border-radius: 8px;
-  font-size: 1rem;
-  text-transform: uppercase;
-  letter-spacing: 2px;
-  text-align: center;
-}
-
-.join-group input:focus {
-  outline: none;
-  border-color: #0984e3;
-}
-
-.btn-secondary {
-  background: #0984e3;
-  padding: 12px 24px;
-}
-
-.btn-secondary:hover {
-  background: #0773c5;
-}
-
-.local-play {
-  margin-top: 20px;
-  padding-top: 20px;
-  border-top: 1px solid #eee;
-}
-
-.btn-ai {
-  background: #e17055;
-  width: 100%;
-  max-width: 300px;
-  margin-bottom: 10px;
-}
-
-.btn-ai:hover {
-  background: #d63031;
-}
-
-.btn-local {
-  background: #636e72;
-  width: 100%;
-  max-width: 300px;
-}
-
-.btn-local:hover {
-  background: #535c60;
-}
-
-/* 等待界面 */
-.waiting-section {
-  text-align: center;
-  padding: 40px 20px;
-}
-
-.waiting-section h2 {
-  color: #2d3436;
-  margin-bottom: 20px;
-  font-size: 1.5rem;
-}
-
-.room-code-display {
-  background: #f8f9fa;
-  padding: 20px;
-  border-radius: 12px;
-  margin-bottom: 20px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-}
-
-.room-code-display span {
-  color: #636e72;
-  font-size: 0.95rem;
-}
-
-.room-code-display strong {
-  color: #2d3436;
-  font-size: 2rem;
-  letter-spacing: 4px;
-  font-family: monospace;
-}
-
-.btn-copy {
-  padding: 8px 16px;
-  background: #0984e3;
-  color: white;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 0.85rem;
-  transition: background 0.2s;
-}
-
-.btn-copy:hover {
-  background: #0773c5;
-}
-
-.waiting-hint {
-  color: #636e72;
-  margin-bottom: 20px;
-  font-size: 0.9rem;
-}
-
-.loading-spinner {
-  width: 40px;
-  height: 40px;
-  border: 4px solid #eee;
-  border-top: 4px solid #0984e3;
-  border-radius: 50%;
-  margin: 20px auto;
-  animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
-}
-
-.btn-cancel {
-  background: #d63031;
-  margin-top: 20px;
-}
-
-.btn-cancel:hover {
-  background: #c0392b;
-}
-
-/* 游戏房间信息 */
-.room-info {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 12px;
-  padding: 10px 16px;
-  background: #e8f5e9;
-  border-radius: 8px;
-  font-size: 0.85rem;
-  color: #2d3436;
-}
-
-.room-info strong {
-  font-family: monospace;
-  letter-spacing: 2px;
-  color: #00b894;
-}
-
-#player-role {
-  font-weight: 500;
-  color: #0984e3;
-}
-
-/* 房间列表样式 */
-.room-list-section {
-  margin-top: 30px;
-  padding-top: 20px;
-  border-top: 1px solid #eee;
-}
-
-.room-list-section h3 {
-  color: #2d3436;
-  margin-bottom: 15px;
-  font-size: 1.3rem;
 }
 
 .room-list {
@@ -693,7 +457,7 @@ canvas {
   background: #0773c5;
 }
 
-/* 创建房间界面样式 */
+/* 创建房间 */
 .create-room-section {
   text-align: center;
   padding: 40px 20px;
@@ -741,7 +505,18 @@ canvas {
   font-size: 1.1rem;
 }
 
-/* 等待界面玩家位置样式 */
+/* 等待界面 */
+.waiting-section {
+  text-align: center;
+  padding: 40px 20px;
+}
+
+.waiting-section h2 {
+  color: #2d3436;
+  margin-bottom: 20px;
+  font-size: 1.5rem;
+}
+
 .room-name-display {
   background: #f8f9fa;
   padding: 20px;
@@ -806,7 +581,114 @@ canvas {
   color: #00b894;
 }
 
-/* Toast 提示 */
+.waiting-hint {
+  color: #636e72;
+  margin-bottom: 20px;
+  font-size: 0.9rem;
+}
+
+.loading-spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid #eee;
+  border-top: 4px solid #0984e3;
+  border-radius: 50%;
+  margin: 20px auto;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.btn-cancel {
+  background: #d63031;
+  margin-top: 20px;
+}
+
+.btn-cancel:hover {
+  background: #c0392b;
+}
+
+/* 持子面板 */
+.captured-pieces {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.captured-panel {
+  flex: 1;
+  padding: 8px 12px;
+  background: #f8f9fa;
+  border-radius: 8px;
+  min-height: 44px;
+}
+
+.captured-label {
+  font-size: 0.8rem;
+  color: #636e72;
+  display: block;
+  margin-bottom: 4px;
+}
+
+.captured-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-height: 28px;
+}
+
+.captured-item {
+  position: relative;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.captured-item.selected .captured-piece {
+  filter: drop-shadow(0 0 3px rgba(9, 132, 227, 0.7));
+}
+
+.captured-piece {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 25px;
+  height: 32px;
+  background: linear-gradient(180deg, #e8d5b0 0%, #d4bc8e 100%);
+  border: none;
+  clip-path: polygon(50% 0%, 92% 24%, 100% 100%, 0% 100%, 8% 24%);
+  filter: drop-shadow(0 0 1px rgba(100, 70, 20, 0.5));
+  font-size: 0.85rem;
+  font-weight: bold;
+  font-family: "KaiTi", "楷体", serif;
+  color: #2c1a00;
+  padding-top: 4px;
+}
+
+.captured-piece.owner-white {
+  background: linear-gradient(180deg, #d8c098 0%, #b89060 100%);
+  color: #1a1000;
+}
+
+.captured-count {
+  font-size: 0.6rem;
+  position: absolute;
+  bottom: -2px;
+  right: -8px;
+  background: none;
+  border: none;
+  border-radius: 8px;
+  padding: 0 3px;
+  color: #555;
+  font-weight: bold;
+  line-height: 1.3;
+  z-index: 1;
+  white-space: nowrap;
+}
+
+/* Toast */
 .toast {
   position: fixed;
   top: 20px;
@@ -822,12 +704,37 @@ canvas {
   transition: transform 0.3s ease, opacity 0.3s ease;
   pointer-events: none;
 }
+
 .toast.show {
   transform: translateX(-50%) translateY(0);
   opacity: 1;
 }
 
-/* ============ 手机端响应式 (< 768px) ============ */
+/* 房间信息 */
+.room-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  padding: 10px 16px;
+  background: #e8f5e9;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  color: #2d3436;
+}
+
+.room-info strong {
+  font-family: monospace;
+  letter-spacing: 2px;
+  color: #00b894;
+}
+
+#player-role {
+  font-weight: 500;
+  color: #0984e3;
+}
+
+/* 手机端响应式 */
 @media (max-width: 768px) {
   body {
     padding: 0;
@@ -862,16 +769,6 @@ canvas {
     gap: 4px;
   }
 
-  .player-color {
-    width: 14px;
-    height: 14px;
-    border-width: 1.5px;
-  }
-
-  .wall-count {
-    font-size: 0.75rem;
-  }
-
   .current-turn {
     font-size: 0.95rem;
     padding: 5px 12px;
@@ -880,7 +777,6 @@ canvas {
     min-width: 100px;
   }
 
-  /* 棋盘填满屏幕，保持正方形 */
   canvas {
     width: calc(100vw - 14px) !important;
     height: calc(100vw - 14px) !important;
@@ -891,38 +787,6 @@ canvas {
     border-radius: 6px;
   }
 
-  /* 墙壁选择器 */
-  .wall-selector {
-    margin: 0 0 8px;
-    padding: 8px 6px;
-    gap: 12px;
-    border-radius: 6px;
-  }
-
-  .wall-type {
-    width: 100px;
-    height: 70px;
-    border-width: 1.5px;
-    border-radius: 6px;
-  }
-
-  .wall-type span {
-    font-size: 1.05rem;
-  }
-
-  .wall-preview {
-    width: 50px;
-    height: 10px;
-    margin-top: 24px;
-  }
-
-  .wall-preview.vertical {
-    width: 10px;
-    height: 50px;
-    margin-top: 6px;
-  }
-
-  /* 控制按钮 */
   .controls {
     margin-bottom: 8px;
     gap: 10px;
@@ -942,7 +806,7 @@ canvas {
     min-height: 50px;
   }
 
-  .btn-ai, .btn-local {
+  .btn-ai, .btn-local, .btn-other {
     max-width: 100%;
     min-height: 50px;
   }
@@ -952,7 +816,6 @@ canvas {
     padding: 10px 20px;
   }
 
-  /* 游戏规则 */
   .rules {
     padding: 10px;
     border-radius: 6px;
@@ -968,7 +831,6 @@ canvas {
     padding: 3px 0;
   }
 
-  /* 房间界面 */
   .room-section {
     padding: 20px 10px;
   }
@@ -996,7 +858,6 @@ canvas {
     padding-top: 15px;
   }
 
-  /* 等待界面 */
   .waiting-section {
     padding: 20px 10px;
   }
@@ -1049,7 +910,6 @@ canvas {
     margin-bottom: 15px;
   }
 
-  /* 创建房间 */
   .create-room-section {
     padding: 20px 10px;
   }
@@ -1081,7 +941,6 @@ canvas {
     min-height: 48px;
   }
 
-  /* 加入房间 */
   .join-room-section {
     margin-top: 15px;
   }
@@ -1101,7 +960,6 @@ canvas {
     font-size: 1.2rem;
   }
 
-  /* 房间列表 */
   .room-list {
     max-height: 250px;
   }
@@ -1125,7 +983,6 @@ canvas {
     min-height: 36px;
   }
 
-  /* 弹窗 */
   .modal-content {
     padding: 24px 20px;
     margin: 10px;
@@ -1147,7 +1004,6 @@ canvas {
     min-height: 48px;
   }
 
-  /* 房间信息 */
   .room-info {
     padding: 8px 12px;
     font-size: 0.8rem;
@@ -1162,23 +1018,35 @@ canvas {
     font-size: 0.8rem;
   }
 
-  /* Toast */
+  .captured-pieces {
+    gap: 4px;
+  }
+
+  .captured-panel {
+    padding: 6px 8px;
+  }
+
+  .captured-label {
+    font-size: 0.7rem;
+  }
+
+  .captured-piece {
+    width: 21px;
+    height: 27px;
+    font-size: 0.7rem;
+  }
+
+  .captured-count {
+    font-size: 0.5rem;
+    bottom: -1px;
+    right: -5px;
+  }
+
   .toast {
     top: 10px;
     padding: 10px 20px;
     font-size: 0.9rem;
     border-radius: 6px;
-  }
-
-  /* 拖动预览 */
-  .drag-preview-wall {
-    width: 70px;
-    height: 12px;
-  }
-
-  .drag-preview-wall.vertical {
-    width: 12px;
-    height: 70px;
   }
 
   .loading-spinner {
@@ -1194,5 +1062,10 @@ canvas {
   .notify-bubble {
     font-size: 0.85rem;
     padding: 10px 18px;
+  }
+
+  .other-games {
+    margin-top: 15px;
+    padding-top: 15px;
   }
 }

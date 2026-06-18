@@ -7,60 +7,154 @@
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      background: #d5d9e0;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      background: #000000;
       min-height: 100vh;
       display: flex;
       justify-content: center;
       align-items: center;
       padding: 20px;
+      color: #ededed;
+      transition: background 0.3s, color 0.3s;
+    }
+    body.light {
+      background: #ffffff;
+      color: #1a1a1a;
     }
     .container {
-      background: rgba(235, 237, 241, 0.97);
-      border-radius: 16px;
-      padding: 40px 28px;
-      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
-      max-width: 500px;
+      max-width: 560px;
       width: 100%;
       text-align: center;
     }
+    .logo {
+      position: relative;
+      width: 120px;
+      height: 104px;
+      margin: 0 auto 32px;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+      transition: transform 1s ease;
+    }
+    .logo:hover {
+      transform: scale(1.1);
+    }
+    .logo svg.main {
+      width: 120px;
+      height: 104px;
+      position: relative;
+      z-index: 10;
+    }
+    .logo .glow-layer {
+      position: absolute;
+      z-index: 1;
+      pointer-events: none;
+      transition: opacity 0.6s ease;
+    }
+    .logo .glow-layer svg {
+      width: 100%;
+      height: 100%;
+      overflow: visible;
+    }
+    .logo .glow-layer.white-glow {
+      top: -60px;
+      left: -60px;
+      width: calc(100% + 120px);
+      height: calc(100% + 120px);
+      opacity: 0.9;
+      animation: breathe-white 3s ease-in-out infinite;
+    }
+    .logo:hover .glow-layer.white-glow {
+      opacity: 1;
+    }
+    .logo .glow-layer.color-glow {
+      top: -60px;
+      left: -60px;
+      width: calc(100% + 120px);
+      height: calc(100% + 120px);
+      opacity: 0;
+      transition: opacity 0.6s ease;
+    }
+    .logo.active .glow-layer.white-glow {
+      opacity: 0;
+      animation: none;
+    }
+    .logo.active .glow-layer.color-glow {
+      opacity: 1;
+      animation: breathe-color 3s ease-in-out infinite;
+    }
+    @keyframes breathe-white {
+      0%, 100% { transform: scale(1); opacity: 0.75; }
+      50% { transform: scale(1.06); opacity: 1; }
+    }
+    @keyframes breathe-color {
+      0%, 100% { transform: scale(1); opacity: 0.75; }
+      50% { transform: scale(1.06); opacity: 1; }
+    }
     h1 {
-      font-size: 2.4rem;
-      color: #2d3436;
-      margin-bottom: 8px;
+      font-size: 2.8rem;
+      font-weight: 700;
+      color: #ededed;
+      margin-bottom: 12px;
+      letter-spacing: -0.04em;
+      background: linear-gradient(180deg, #ffffff 0%, rgba(255,255,255,0.65) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    body.light h1 {
+      background: linear-gradient(180deg, #1a1a1a 0%, rgba(26,26,26,0.65) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
     }
     .subtitle {
-      color: #636e72;
-      font-size: 0.95rem;
-      margin-bottom: 36px;
+      color: #888888;
+      font-size: 1.1rem;
+      margin-bottom: 56px;
+      margin-top: 16px;
+      font-weight: 400;
     }
+    body.light .subtitle { color: #666666; }
     .game-list {
       display: flex;
-      flex-direction: column;
-      gap: 16px;
+      flex-direction: row;
+      justify-content: center;
+      gap: 20px;
     }
     .game-card {
       display: flex;
+      flex-direction: column;
       align-items: center;
-      gap: 16px;
-      padding: 20px 24px;
-      background: linear-gradient(135deg, #ffffff 0%, #f5f5f5 100%);
-      border: 2px solid #e0e0e0;
-      border-radius: 12px;
+      gap: 8px;
+      padding: 16px 20px;
+      background: #0a0a0a;
+      border: 1px solid #333333;
+      border-radius: 10px;
       cursor: pointer;
-      transition: all 0.25s ease;
+      transition: all 0.2s ease;
       text-decoration: none;
       color: inherit;
+      width: 140px;
+    }
+    body.light .game-card {
+      background: #f5f5f5;
+      border: 1px solid #e0e0e0;
     }
     .game-card:hover {
-      border-color: #0984e3;
-      transform: translateY(-3px);
-      box-shadow: 0 6px 20px rgba(9, 132, 227, 0.2);
+      border-color: #666666;
+      background: #111111;
+      transform: translateY(-2px);
+      box-shadow: 0 8px 30px rgba(255, 255, 255, 0.05);
+    }
+    body.light .game-card:hover {
+      border-color: #cccccc;
+      background: #eeeeee;
+      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08);
     }
     .game-icon {
-      width: 56px;
-      height: 56px;
-      border-radius: 12px;
+      width: 48px;
+      height: 48px;
+      border-radius: 10px;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -68,81 +162,168 @@
       position: relative;
     }
     .game-icon.quoridor {
-      background: linear-gradient(135deg, #74b9ff, #0984e3);
+      background: #171717;
+      border: 1px solid #333333;
+    }
+    body.light .game-icon.quoridor {
+      background: #e8e8e8;
+      border: 1px solid #d0d0d0;
     }
     .game-icon.shogi {
-      background: linear-gradient(135deg, #d4bc8e, #8b6914);
+      background: #171717;
+      border: 1px solid #333333;
     }
-    /* 将棋图标：五角形棋子 */
+    body.light .game-icon.shogi {
+      background: #e8e8e8;
+      border: 1px solid #d0d0d0;
+    }
     .shogi-piece {
-      width: 30px;
-      height: 38px;
-      background: linear-gradient(180deg, #fff8e1 0%, #f0deb4 100%);
+      width: 26px;
+      height: 34px;
+      background: #ededed;
       clip-path: polygon(50% 0%, 92% 24%, 100% 100%, 0% 100%, 8% 24%);
-      border: none;
-      filter: drop-shadow(0 1px 2px rgba(0,0,0,0.3));
+      filter: drop-shadow(0 1px 3px rgba(255,255,255,0.15));
     }
-    /* 路墙棋图标：棋子+墙 */
+    body.light .shogi-piece {
+      background: #333333;
+      filter: drop-shadow(0 1px 3px rgba(0,0,0,0.1));
+    }
     .quoridor-icon {
       position: relative;
-      width: 40px;
-      height: 40px;
+      width: 36px;
+      height: 36px;
     }
     .quoridor-piece {
-      width: 20px;
-      height: 20px;
-      background: white;
+      width: 18px;
+      height: 18px;
+      background: #ededed;
       border-radius: 50%;
       position: absolute;
-      top: 10px;
-      left: 6px;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+      top: 14px;
+      left: 9px;
+      box-shadow: 0 1px 4px rgba(255,255,255,0.15);
+    }
+    body.light .quoridor-piece {
+      background: #333333;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.1);
     }
     .quoridor-wall {
-      width: 4px;
-      height: 28px;
-      background: #ffeb3b;
+      width: 26px;
+      height: 3px;
+      background: #ededed;
       border-radius: 2px;
       position: absolute;
-      top: 6px;
-      right: 8px;
-      box-shadow: 0 1px 2px rgba(0,0,0,0.2);
+      top: 4px;
+      left: 5px;
+    }
+    body.light .quoridor-wall {
+      background: #333333;
     }
     .game-info {
-      text-align: left;
+      text-align: center;
     }
     .game-name {
-      font-size: 1.3rem;
-      font-weight: bold;
-      color: #2d3436;
-      margin-bottom: 4px;
+      font-size: 1rem;
+      font-weight: 600;
+      color: #ededed;
+      margin-bottom: 2px;
     }
+    body.light .game-name { color: #1a1a1a; }
     .game-desc {
-      font-size: 0.85rem;
-      color: #636e72;
+      font-size: 0.75rem;
+      color: #888888;
     }
+    body.light .game-desc { color: #666666; }
     .game-arrow {
-      margin-left: auto;
-      font-size: 1.2rem;
-      color: #b2bec3;
-      transition: color 0.2s;
-    }
-    .game-card:hover .game-arrow {
-      color: #0984e3;
+      display: none;
     }
     @media (max-width: 480px) {
-      .container { padding: 24px 16px; }
-      h1 { font-size: 2rem; }
+      h1 { font-size: 2.2rem; }
       .game-card { padding: 16px 18px; }
-      .game-icon { width: 48px; height: 48px; font-size: 1.5rem; }
-      .game-name { font-size: 1.15rem; }
+      .game-icon { width: 42px; height: 42px; }
+      .game-name { font-size: 1.05rem; }
     }
+
+    /* Theme Toggle */
+    .theme-toggle {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      border: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.3s ease;
+      z-index: 1000;
+      background: #ededed;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+    }
+    body.light .theme-toggle {
+      background: #1a1a1a;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+    .theme-toggle svg {
+      width: 22px;
+      height: 22px;
+    }
+    .theme-toggle .icon-sun { display: none; }
+    .theme-toggle .icon-moon { display: block; }
+    body.light .theme-toggle .icon-sun { display: block; }
+    body.light .theme-toggle .icon-moon { display: none; }
   </style>
 </head>
 <body>
   <div class="container">
-    <h1>棋类游戏</h1>
-    <p class="subtitle">选择你想玩的游戏</p>
+    <div class="logo" onclick="this.classList.toggle('active')">
+      <div class="glow-layer white-glow">
+        <svg viewBox="-60 -60 236 220" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <filter id="softGlow" x="-100%" y="-100%" width="300%" height="300%">
+              <feGaussianBlur in="SourceGraphic" stdDeviation="10" result="blur"/>
+              <feGaussianBlur in="SourceGraphic" stdDeviation="20" result="blur2"/>
+              <feMerge>
+                <feMergeNode in="blur2"/>
+                <feMergeNode in="blur"/>
+              </feMerge>
+            </filter>
+          </defs>
+          <path d="M57.5 2L113 98H3L57.5 2Z" fill="rgba(255,255,255,0.95)" filter="url(#softGlow)"/>
+        </svg>
+      </div>
+      <div class="glow-layer color-glow">
+        <svg viewBox="-60 -60 236 220" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <filter id="colorSoftGlow" x="-100%" y="-100%" width="300%" height="300%">
+              <feGaussianBlur in="SourceGraphic" stdDeviation="10" result="blur"/>
+              <feGaussianBlur in="SourceGraphic" stdDeviation="20" result="blur2"/>
+              <feMerge>
+                <feMergeNode in="blur2"/>
+                <feMergeNode in="blur"/>
+              </feMerge>
+            </filter>
+            <linearGradient id="neonGrad" x1="0%" y1="100%" x2="100%" y2="0%">
+              <stop offset="0%" style="stop-color:#ff0044"/>
+              <stop offset="16%" style="stop-color:#ff69b4"/>
+              <stop offset="33%" style="stop-color:#9933ff"/>
+              <stop offset="50%" style="stop-color:#00ccff"/>
+              <stop offset="66%" style="stop-color:#00ff66"/>
+              <stop offset="83%" style="stop-color:#ff8800"/>
+              <stop offset="100%" style="stop-color:#ff0044"/>
+            </linearGradient>
+          </defs>
+          <path d="M57.5 2L113 98H3L57.5 2Z" fill="url(#neonGrad)" filter="url(#colorSoftGlow)"/>
+        </svg>
+      </div>
+      <svg class="main" viewBox="0 0 116 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M57.5 2L113 98H3L57.5 2Z" fill="#000000"/>
+      </svg>
+    </div>
+    <h1>弈 境</h1>
+    <p class="subtitle">―― Levesper ――</p>
 
     <div class="game-list">
       <a class="game-card" href="quoridor/index.html">
@@ -154,7 +335,7 @@
         </div>
         <div class="game-info">
           <div class="game-name">路墙棋</div>
-          <div class="game-desc">Quoridor · 双人对弈 · 在线/人机/本地</div>
+          <div class="game-desc">Quoridor</div>
         </div>
         <span class="game-arrow">›</span>
       </a>
@@ -165,11 +346,40 @@
         </div>
         <div class="game-info">
           <div class="game-name">将棋</div>
-          <div class="game-desc">Shogi · 日本象棋 · 在线/人机/本地</div>
+          <div class="game-desc">Shogi</div>
         </div>
         <span class="game-arrow">›</span>
       </a>
     </div>
   </div>
+
+  <button class="theme-toggle" onclick="toggleTheme()">
+    <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="#1a1a1a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+    </svg>
+    <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="#ededed" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="12" cy="12" r="5"/>
+      <line x1="12" y1="1" x2="12" y2="3"/>
+      <line x1="12" y1="21" x2="12" y2="23"/>
+      <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>
+      <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+      <line x1="1" y1="12" x2="3" y2="12"/>
+      <line x1="21" y1="12" x2="23" y2="12"/>
+      <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
+      <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+    </svg>
+  </button>
+
+  <script>
+    function toggleTheme() {
+      document.body.classList.toggle('light');
+      localStorage.setItem('theme', document.body.classList.contains('light') ? 'light' : 'dark');
+    }
+    (function() {
+      if (localStorage.getItem('theme') === 'light') {
+        document.body.classList.add('light');
+      }
+    })();
+  </script>
 </body>
 </html>

@@ -5,439 +5,226 @@
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  background: #d5d9e0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  background: #000000;
   min-height: 100vh;
   display: flex;
   justify-content: center;
   align-items: center;
   padding: 20px;
+  color: #ededed;
   -webkit-tap-highlight-color: transparent;
   -webkit-touch-callout: none;
   -webkit-user-select: none;
   user-select: none;
+  transition: background 0.3s, color 0.3s;
+}
+
+body.light {
+  background: #ffffff;
+  color: #1a1a1a;
 }
 
 .container {
-  background: rgba(235, 237, 241, 0.97);
-  border-radius: 16px;
-  padding: 28px;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
   max-width: 660px;
   width: 100%;
-  position: relative;
+  text-align: center;
 }
 
 h1 {
   text-align: center;
-  color: #2d3436;
-  font-size: 2.2rem;
+  font-size: 2.8rem;
+  font-weight: 700;
   margin-bottom: 4px;
+  letter-spacing: -0.04em;
+  background: linear-gradient(180deg, #ffffff 0%, rgba(255,255,255,0.65) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+body.light h1 {
+  background: linear-gradient(180deg, #1a1a1a 0%, rgba(26,26,26,0.65) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
 
 .subtitle {
   text-align: center;
-  color: #636e72;
-  font-size: 0.9rem;
-  margin-bottom: 20px;
+  color: #888888;
+  font-size: 1rem;
+  margin-bottom: 32px;
+  font-weight: 400;
 }
 
-.game-info {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 16px;
-  padding: 12px;
-  background: #f8f9fa;
-  border-radius: 8px;
-}
+body.light .subtitle { color: #666666; }
 
-.player-info {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 0.9rem;
-}
-
-.player-name.black {
-  color: #1a1a1a;
-  font-weight: bold;
-}
-
-.player-name.white {
-  color: #666;
-  font-weight: bold;
-}
-
-.player-color {
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
-  border: 2px solid #2d3436;
-}
-
-.player-color.black {
-  background: #1a1a1a;
-}
-
-.player-color.white {
-  background: #ffffff;
-  border-color: #999;
-}
-
-.wall-count {
-  color: #636e72;
-  font-weight: 700;
-}
-
-.current-turn {
-  font-weight: bold;
-  color: #2d3436;
-  font-size: 1.2rem;
-  padding: 6px 16px;
-  min-height: 36px;
-  line-height: 36px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: #ffeaa7;
-  border-radius: 20px;
-  min-width: 140px;
-  text-align: center;
-}
-
-/* 墙壁选择器 */
-.wall-selector {
-  display: flex;
-  justify-content: center;
-  gap: 16px;
-  margin-top: 12px;
-  margin-bottom: 16px;
-  padding: 14px 20px;
-  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-  border-radius: 12px;
-  border: 1px solid #e0e0e0;
-  -webkit-user-select: none;
-  user-select: none;
-}
-
-.wall-type {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  width: 130px;
-  height: 100px;
-  background: linear-gradient(180deg, #ffffff 0%, #f5f5f5 100%);
-  border: 2px solid #d0d0d0;
-  border-radius: 12px;
-  cursor: grab;
-  transition: all 0.2s ease;
-  user-select: none;
-  touch-action: none;
-  -webkit-tap-highlight-color: transparent;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-}
-
-.wall-type:hover {
-  border-color: #0984e3;
-  background: linear-gradient(180deg, #e8f4fd 0%, #d4eaf7 100%);
-  box-shadow: 0 4px 12px rgba(9,132,227,0.2);
-  transform: translateY(-2px);
-}
-
-.wall-type:active {
-  cursor: grabbing;
-  transform: scale(0.96);
-  box-shadow: 0 1px 4px rgba(0,0,0,0.1);
-}
-
-.wall-type span {
-  font-size: 1.125rem;
-  font-weight: 600;
-  color: #495057;
-  line-height: 1;
-  margin-top: auto;
-  letter-spacing: 0.5px;
-}
-
-.wall-preview {
-  width: 74px;
-  height: 14px;
-  background: linear-gradient(180deg, #3a3a3a 0%, #1a1a1a 100%);
-  border-radius: 7px;
-  border: 1.5px solid #000;
-  margin-top: 30px;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.3);
-}
-
-.wall-preview.vertical {
-  width: 14px;
-  height: 64px;
-  margin-top: 6px;
-}
-
-canvas {
-  display: block;
-  margin: 0 auto 16px;
-  border: 3px solid #2d3436;
-  border-radius: 8px;
-  cursor: pointer;
-  width: 100%;
-  height: auto;
-  touch-action: manipulation;
-  -webkit-tap-highlight-color: transparent;
-}
-
-/* 手机端拖动预览 */
-.drag-preview {
-  position: fixed;
-  pointer-events: none;
-  z-index: 1000;
-  transform: translate(-50%, -50%);
-}
-
-.drag-preview-wall {
-  width: 80px;
-  height: 14px;
-  background: rgba(100, 100, 100, 0.6);
-  border: 2px dashed #666;
-  border-radius: 7px;
-}
-
-.drag-preview-wall.vertical {
-  width: 14px;
-  height: 80px;
-}
-
-.controls {
-  text-align: center;
-  margin-bottom: 16px;
-}
-
-.btn {
-  padding: 14px 38px;
-  background: #0984e3;
-  color: white;
-  border: none;
-  border-radius: 8px;
-  font-size: 1.2rem;
-  cursor: pointer;
-  transition: background 0.2s;
-}
-
-.btn:hover {
-  background: #0773c5;
-}
-
-.btn-undo {
-  background: #e17055;
-}
-
-.btn-undo:hover {
-  background: #d63031;
-}
-
-.controls {
-  display: flex;
-  justify-content: center;
-  gap: 15px;
-}
-
-.rules {
-  background: #f8f9fa;
-  padding: 16px;
-  border-radius: 8px;
-}
-
-.rules h3 {
-  color: #2d3436;
-  margin-bottom: 12px;
-}
-
-.rules ul {
-  list-style: none;
-  padding: 0;
-}
-
-.rules li {
-  padding: 4px 0;
-  color: #636e72;
-  font-size: 0.9rem;
-}
-
-.rules li::before {
-  content: "• ";
-  color: #0984e3;
-  font-weight: bold;
-}
-
-.modal {
-  display: none;
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: rgba(0, 0, 0, 0.7);
-  justify-content: center;
-  align-items: center;
-  z-index: 100;
-}
-
-.modal.show {
-  display: flex;
-}
-
-.modal-content {
-  background: white;
-  padding: 40px;
-  border-radius: 16px;
-  text-align: center;
-  animation: popIn 0.3s ease;
-}
-
-.modal-content h2 {
-  color: #2d3436;
-  margin-bottom: 20px;
-  font-size: 1.8rem;
-}
-
-.win-buttons {
-  display: flex;
-  gap: 15px;
-  justify-content: center;
-  margin-top: 20px;
-}
-
-.btn-restart {
-  background: #00b894;
-}
-
-.btn-restart:hover {
-  background: #00a381;
-}
-
-.restart-notify {
-  margin-bottom: 15px;
-}
-
-.notify-bubble {
-  display: inline-block;
-  padding: 8px 16px;
-  background: #e8f5e9;
-  border: 2px solid #4caf50;
-  border-radius: 20px;
-  color: #2e7d32;
-  font-size: 0.9rem;
-  font-weight: 500;
-  animation: bounce 0.6s ease infinite alternate;
-}
-
-@keyframes bounce {
-  from { transform: translateY(0); }
-  to { transform: translateY(-5px); }
-}
-
-@keyframes popIn {
-  from {
-    transform: scale(0.8);
-    opacity: 0;
-  }
-  to {
-    transform: scale(1);
-    opacity: 1;
-  }
-}
-
-/* 房间选择界面 */
+/* ===== 房间选择界面 ===== */
 .room-section {
   text-align: center;
   padding: 40px 20px;
 }
 
 .room-section h2 {
-  color: #2d3436;
+  color: #ededed;
   margin-bottom: 10px;
-  font-size: 1.8rem;
+  font-size: 1.6rem;
+  font-weight: 600;
 }
 
+body.light .room-section h2 { color: #1a1a1a; }
+
 .room-desc {
-  color: #636e72;
+  color: #888888;
   margin-bottom: 30px;
-  font-size: 1.1rem;
+  font-size: 1rem;
 }
+
+body.light .room-desc { color: #666666; }
 
 .room-actions {
   margin-bottom: 30px;
 }
 
+.btn {
+  padding: 12px 28px;
+  background: #ededed;
+  color: #000000;
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: inline-block;
+  text-decoration: none;
+}
+
+body.light .btn {
+  background: #ffffff;
+  color: #1a1a1a;
+  border: 1px solid #e0e0e0;
+}
+
+body.light .btn:hover {
+  background: #f5f5f5;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.btn:hover {
+  background: #ffffff;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(255, 255, 255, 0.1);
+}
+
+body.light .btn:hover {
+  background: #333333;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
 .btn-primary {
-  background: #00b894;
+  background: #ededed;
+  color: #000000;
   width: 100%;
-  max-width: 300px;
-  padding: 16px 38px;
-  font-size: 1.3rem;
-  margin-bottom: 20px;
+  max-width: 240px;
+  padding: 14px 32px;
+  font-size: 1.05rem;
+  margin-bottom: 12px;
+}
+
+body.light .btn-primary {
+  background: #ffffff;
+  color: #1a1a1a;
+  border: 1px solid #e0e0e0;
+}
+
+body.light .btn-primary:hover {
+  background: #f5f5f5;
 }
 
 .btn-primary:hover {
-  background: #00a381;
+  background: #ffffff;
+}
+
+body.light .btn-primary:hover {
+  background: #333333;
 }
 
 .btn-join {
-  background: #0984e3;
+  background: transparent;
+  color: #ededed;
+  border: 1px solid #333333;
   width: 100%;
-  max-width: 300px;
-  padding: 16px 38px;
-  font-size: 1.3rem;
-  margin-bottom: 20px;
+  max-width: 240px;
+  padding: 14px 32px;
+  font-size: 1.05rem;
+  margin-bottom: 12px;
+}
+
+body.light .btn-join {
+  background: #ffffff;
+  color: #1a1a1a;
+  border-color: #e0e0e0;
+}
+
+body.light .btn-join:hover {
+  border-color: #cccccc;
+  background: #f5f5f5;
 }
 
 .btn-join:hover {
-  background: #0773c5;
+  border-color: #666666;
+  background: #111111;
 }
 
-.back-button {
-  position: absolute;
-  top: 20px;
-  left: 20px;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  color: #636e72;
-  font-size: 1rem;
-  cursor: pointer;
-  transition: color 0.2s;
-  z-index: 10;
+body.light .btn-join:hover {
+  border-color: #999999;
+  background: #f0f0f0;
 }
 
-.back-button:hover {
-  color: #2d3436;
+.btn-back {
+  background: transparent;
+  color: #888888;
+  border: 1px solid #222222;
+  width: 100%;
+  max-width: 240px;
+  padding: 14px 32px;
+  font-size: 1.05rem;
 }
 
-.back-arrow {
-  font-size: 1.4rem;
-  line-height: 1;
+body.light .btn-back {
+  background: #ffffff;
+  color: #666666;
+  border-color: #e0e0e0;
 }
 
-.join-room-section {
-  margin-top: 20px;
+body.light .btn-back:hover {
+  border-color: #cccccc;
+  color: #1a1a1a;
+  background: #f5f5f5;
 }
 
-.join-room-section h2 {
-  margin-bottom: 20px;
-  font-size: 1.6rem;
-  color: #2d3436;
+.btn-back:hover {
+  border-color: #444444;
+  color: #ededed;
+  background: #0a0a0a;
+}
+
+body.light .btn-back:hover {
+  border-color: #aaaaaa;
+  color: #1a1a1a;
+  background: #f5f5f5;
 }
 
 .divider {
-  color: #636e72;
-  margin: 20px 0;
-  font-size: 0.9rem;
+  color: #555555;
+  margin: 24px 0;
+  font-size: 0.85rem;
   position: relative;
 }
+
+body.light .divider { color: #999999; }
 
 .divider::before,
 .divider::after {
@@ -446,7 +233,12 @@ canvas {
   top: 50%;
   width: 80px;
   height: 1px;
-  background: #ddd;
+  background: #333333;
+}
+
+body.light .divider::before,
+body.light .divider::after {
+  background: #dddddd;
 }
 
 .divider::before {
@@ -456,6 +248,165 @@ canvas {
 .divider::after {
   right: calc(50% - 100px);
 }
+
+.local-play {
+  margin-top: 24px;
+  padding-top: 24px;
+  border-top: 1px solid #222222;
+}
+
+body.light .local-play {
+  border-top-color: #dddddd;
+}
+
+.btn-ai {
+  background: transparent;
+  color: #ededed;
+  border: 1px solid #333333;
+  width: 100%;
+  max-width: 240px;
+  margin-bottom: 10px;
+  padding: 14px 32px;
+  font-size: 1.05rem;
+}
+
+body.light .btn-ai {
+  background: #ffffff;
+  color: #1a1a1a;
+  border-color: #e0e0e0;
+}
+
+body.light .btn-ai:hover {
+  border-color: #cccccc;
+  background: #f5f5f5;
+}
+
+.btn-ai:hover {
+  border-color: #666666;
+  background: #111111;
+}
+
+body.light .btn-ai:hover {
+  border-color: #999999;
+  background: #f0f0f0;
+}
+
+.btn-local {
+  background: transparent;
+  color: #888888;
+  border: 1px solid #222222;
+  width: 100%;
+  max-width: 240px;
+  padding: 14px 32px;
+  font-size: 1.05rem;
+}
+
+body.light .btn-local {
+  background: #ffffff;
+  color: #666666;
+  border-color: #e0e0e0;
+}
+
+body.light .btn-local:hover {
+  border-color: #cccccc;
+  color: #1a1a1a;
+  background: #f5f5f5;
+}
+
+.btn-local:hover {
+  border-color: #444444;
+  color: #ededed;
+  background: #0a0a0a;
+}
+
+body.light .btn-local:hover {
+  border-color: #aaaaaa;
+  color: #1a1a1a;
+  background: #f5f5f5;
+}
+
+.btn-rules {
+  background: transparent;
+  color: #ededed;
+  border: 1px solid #333333;
+  width: 100%;
+  max-width: 240px;
+  margin-bottom: 10px;
+}
+
+body.light .btn-rules {
+  background: #ffffff;
+  color: #1a1a1a;
+  border-color: #e0e0e0;
+}
+
+body.light .btn-rules:hover {
+  border-color: #cccccc;
+  background: #f5f5f5;
+}
+
+.btn-rules:hover {
+  border-color: #666666;
+  background: #111111;
+}
+
+body.light .btn-rules:hover {
+  border-color: #999999;
+  background: #f0f0f0;
+}
+
+.other-games {
+  margin-top: 24px;
+  padding-top: 24px;
+  border-top: 1px solid #222222;
+}
+
+body.light .other-games {
+  border-top-color: #dddddd;
+}
+
+/* ===== 加入房间界面 ===== */
+.back-button {
+  position: absolute;
+  top: 20px;
+  left: 20px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #888888;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: color 0.2s;
+  z-index: 10;
+}
+
+body.light .back-button { color: #666666; }
+
+.back-button:hover {
+  color: #ededed;
+}
+
+body.light .back-button:hover {
+  color: #1a1a1a;
+}
+
+.back-arrow {
+  font-size: 1.3rem;
+  line-height: 1;
+}
+
+.join-room-section {
+  margin-top: 20px;
+}
+
+.join-room-section h2 {
+  margin-bottom: 20px;
+  font-size: 1.5rem;
+  color: #ededed;
+  font-weight: 600;
+}
+
+body.light .join-room-section h2 { color: #1a1a1a; }
 
 .join-group {
   display: flex;
@@ -468,182 +419,91 @@ canvas {
 .join-group input {
   flex: 1;
   padding: 12px 16px;
-  border: 2px solid #ddd;
+  background: #0a0a0a;
+  border: 1px solid #333333;
   border-radius: 8px;
   font-size: 1rem;
+  color: #ededed;
   text-transform: uppercase;
   letter-spacing: 2px;
   text-align: center;
 }
 
+body.light .join-group input {
+  background: #f5f5f5;
+  border-color: #dddddd;
+  color: #1a1a1a;
+}
+
 .join-group input:focus {
   outline: none;
-  border-color: #0984e3;
+  border-color: #666666;
+}
+
+body.light .join-group input:focus {
+  border-color: #999999;
 }
 
 .btn-secondary {
-  background: #0984e3;
+  background: #ededed;
+  color: #000000;
   padding: 12px 24px;
 }
 
 .btn-secondary:hover {
-  background: #0773c5;
+  background: #ffffff;
 }
 
-.local-play {
-  margin-top: 20px;
-  padding-top: 20px;
-  border-top: 1px solid #eee;
-}
-
-.btn-ai {
-  background: #e17055;
-  width: 100%;
-  max-width: 300px;
-  margin-bottom: 10px;
-}
-
-.btn-ai:hover {
-  background: #d63031;
-}
-
-.btn-local {
-  background: #636e72;
-  width: 100%;
-  max-width: 300px;
-}
-
-.btn-local:hover {
-  background: #535c60;
-}
-
-/* 等待界面 */
-.waiting-section {
-  text-align: center;
-  padding: 40px 20px;
-}
-
-.waiting-section h2 {
-  color: #2d3436;
-  margin-bottom: 20px;
-  font-size: 1.5rem;
-}
-
-.room-code-display {
-  background: #f8f9fa;
-  padding: 20px;
-  border-radius: 12px;
-  margin-bottom: 20px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-}
-
-.room-code-display span {
-  color: #636e72;
-  font-size: 0.95rem;
-}
-
-.room-code-display strong {
-  color: #2d3436;
-  font-size: 2rem;
-  letter-spacing: 4px;
-  font-family: monospace;
-}
-
-.btn-copy {
-  padding: 8px 16px;
-  background: #0984e3;
-  color: white;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 0.85rem;
-  transition: background 0.2s;
-}
-
-.btn-copy:hover {
-  background: #0773c5;
-}
-
-.waiting-hint {
-  color: #636e72;
-  margin-bottom: 20px;
-  font-size: 0.9rem;
-}
-
-.loading-spinner {
-  width: 40px;
-  height: 40px;
-  border: 4px solid #eee;
-  border-top: 4px solid #0984e3;
-  border-radius: 50%;
-  margin: 20px auto;
-  animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
-}
-
-.btn-cancel {
-  background: #d63031;
-  margin-top: 20px;
-}
-
-.btn-cancel:hover {
-  background: #c0392b;
-}
-
-/* 游戏房间信息 */
-.room-info {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 12px;
-  padding: 10px 16px;
-  background: #e8f5e9;
-  border-radius: 8px;
-  font-size: 0.85rem;
-  color: #2d3436;
-}
-
-.room-info strong {
-  font-family: monospace;
-  letter-spacing: 2px;
-  color: #00b894;
-}
-
-#player-role {
-  font-weight: 500;
-  color: #0984e3;
-}
-
-/* 房间列表样式 */
+/* 房间列表 */
 .room-list-section {
   margin-top: 30px;
   padding-top: 20px;
-  border-top: 1px solid #eee;
+  border-top: 1px solid #222222;
 }
 
+body.light .room-list-section { border-top-color: #dddddd; }
+
 .room-list-section h3 {
-  color: #2d3436;
+  color: #ededed;
   margin-bottom: 15px;
-  font-size: 1.3rem;
+  font-size: 1.2rem;
 }
+
+body.light .room-list-section h3 { color: #1a1a1a; }
 
 .room-list {
   max-height: 300px;
   overflow-y: auto;
-  border: 1px solid #eee;
+  border: 1px solid #222222;
   border-radius: 8px;
+  background: #0a0a0a;
+}
+
+body.light .room-list {
+  border-color: #dddddd;
+  background: #f5f5f5;
+}
+
+.room-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.room-list::-webkit-scrollbar-track {
+  background: #0a0a0a;
+}
+
+body.light .room-list::-webkit-scrollbar-track {
+  background: #f5f5f5;
+}
+
+.room-list::-webkit-scrollbar-thumb {
+  background: #333333;
+  border-radius: 3px;
 }
 
 .room-list-empty {
-  color: #636e72;
-  padding: 20px;
+  color: #555555;
+  padding: 24px;
   text-align: center;
   font-size: 0.9rem;
 }
@@ -653,12 +513,18 @@ canvas {
   justify-content: space-between;
   align-items: center;
   padding: 14px 19px;
-  border-bottom: 1px solid #eee;
+  border-bottom: 1px solid #1a1a1a;
   transition: background 0.2s;
 }
 
+body.light .room-item { border-bottom-color: #eeeeee; }
+
 .room-item:hover {
-  background: #f8f9fa;
+  background: #111111;
+}
+
+body.light .room-item:hover {
+  background: #eeeeee;
 }
 
 .room-item:last-child {
@@ -667,43 +533,60 @@ canvas {
 
 .room-item-name {
   font-weight: 500;
-  color: #2d3436;
+  color: #ededed;
   font-size: 1.05rem;
 }
 
+body.light .room-item-name { color: #1a1a1a; }
+
 .room-item-status {
   font-size: 0.85rem;
-  color: #636e72;
+  color: #888888;
   margin-right: 10px;
 }
 
+body.light .room-item-status { color: #666666; }
+
 .room-item-join {
   padding: 6px 18px;
-  background: #0984e3;
-  color: white;
+  background: #ededed;
+  color: #000000;
   border: none;
   border-radius: 6px;
   font-size: 0.9rem;
+  font-weight: 500;
   cursor: pointer;
-  transition: background 0.2s;
+  transition: all 0.2s;
   white-space: nowrap;
 }
 
-.room-item-join:hover {
-  background: #0773c5;
+body.light .room-item-join {
+  background: #1a1a1a;
+  color: #ffffff;
 }
 
-/* 创建房间界面样式 */
+.room-item-join:hover {
+  background: #ffffff;
+}
+
+body.light .room-item-join:hover {
+  background: #333333;
+}
+
+/* ===== 创建房间界面 ===== */
 .create-room-section {
   text-align: center;
   padding: 40px 20px;
 }
 
 .create-room-section h2 {
-  color: #2d3436;
+  color: #ededed;
   margin-bottom: 30px;
   font-size: 1.5rem;
+  font-weight: 600;
 }
+
+body.light .create-room-section h2 { color: #1a1a1a; }
 
 .create-room-form {
   max-width: 400px;
@@ -713,20 +596,40 @@ canvas {
 .create-room-form input {
   width: 100%;
   padding: 14px 16px;
-  border: 2px solid #ddd;
+  background: #0a0a0a;
+  border: 1px solid #333333;
   border-radius: 8px;
   font-size: 1rem;
+  color: #ededed;
   margin-bottom: 20px;
+}
+
+body.light .create-room-form input {
+  background: #f5f5f5;
+  border-color: #dddddd;
+  color: #1a1a1a;
+}
+
+.create-room-form input::placeholder {
+  color: #555555;
+}
+
+body.light .create-room-form input::placeholder {
+  color: #999999;
 }
 
 .create-room-form input:focus {
   outline: none;
-  border-color: #0984e3;
+  border-color: #666666;
+}
+
+body.light .create-room-form input:focus {
+  border-color: #999999;
 }
 
 .create-room-buttons {
   display: flex;
-  gap: 15px;
+  gap: 12px;
   justify-content: center;
   align-items: stretch;
 }
@@ -738,12 +641,27 @@ canvas {
   margin: 0;
   width: auto;
   padding: 14px 28px;
-  font-size: 1.1rem;
+  font-size: 1.05rem;
 }
 
-/* 等待界面玩家位置样式 */
+/* ===== 等待界面 ===== */
+.waiting-section {
+  text-align: center;
+  padding: 40px 20px;
+}
+
+.waiting-section h2 {
+  color: #ededed;
+  margin-bottom: 20px;
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+
+body.light .waiting-section h2 { color: #1a1a1a; }
+
 .room-name-display {
-  background: #f8f9fa;
+  background: #0a0a0a;
+  border: 1px solid #222222;
   padding: 20px;
   border-radius: 12px;
   margin-bottom: 20px;
@@ -753,14 +671,88 @@ canvas {
   gap: 12px;
 }
 
+body.light .room-name-display {
+  background: #f5f5f5;
+  border-color: #dddddd;
+}
+
 .room-name-display span {
-  color: #636e72;
+  color: #888888;
   font-size: 0.95rem;
 }
 
+body.light .room-name-display span { color: #666666; }
+
 .room-name-display strong {
-  color: #2d3436;
+  color: #ededed;
   font-size: 1.8rem;
+}
+
+body.light .room-name-display strong { color: #1a1a1a; }
+
+.room-code-display {
+  background: #0a0a0a;
+  border: 1px solid #222222;
+  padding: 20px;
+  border-radius: 12px;
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+
+body.light .room-code-display {
+  background: #f5f5f5;
+  border-color: #dddddd;
+}
+
+.room-code-display span {
+  color: #888888;
+  font-size: 0.95rem;
+}
+
+body.light .room-code-display span { color: #666666; }
+
+.room-code-display strong {
+  color: #ededed;
+  font-size: 2rem;
+  letter-spacing: 4px;
+  font-family: monospace;
+}
+
+body.light .room-code-display strong { color: #1a1a1a; }
+
+.btn-copy {
+  padding: 8px 16px;
+  background: transparent;
+  color: #ededed;
+  border: 1px solid #333333;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  transition: all 0.2s;
+}
+
+body.light .btn-copy {
+  background: #ffffff;
+  color: #1a1a1a;
+  border-color: #e0e0e0;
+}
+
+body.light .btn-copy:hover {
+  border-color: #cccccc;
+  background: #f5f5f5;
+}
+
+.btn-copy:hover {
+  border-color: #666666;
+  background: #111111;
+}
+
+body.light .btn-copy:hover {
+  border-color: #999999;
+  background: #f0f0f0;
 }
 
 .player-slots {
@@ -775,59 +767,647 @@ canvas {
   align-items: center;
   gap: 8px;
   padding: 14px 24px;
-  background: #f8f9fa;
+  background: #0a0a0a;
+  border: 1px solid #222222;
   border-radius: 8px;
   min-width: 180px;
+}
+
+body.light .player-slot {
+  background: #f5f5f5;
+  border-color: #dddddd;
 }
 
 .slot-color {
   width: 16px;
   height: 16px;
   border-radius: 50%;
-  border: 2px solid #2d3436;
+  border: 2px solid #444444;
 }
 
+body.light .slot-color { border-color: #cccccc; }
+
 .slot-color.black {
-  background: #1a1a1a;
+  background: #ededed;
+  border-color: #ededed;
+}
+
+body.light .slot-color.black {
+  background: #333333;
+  border-color: #333333;
 }
 
 .slot-color.white {
+  background: #333333;
+  border-color: #555555;
+}
+
+body.light .slot-color.white {
   background: #ffffff;
-  border-color: #999;
+  border-color: #cccccc;
 }
 
 .slot-label {
-  color: #636e72;
+  color: #888888;
   font-size: 0.9rem;
 }
 
+body.light .slot-label { color: #666666; }
+
 .slot-status {
   font-weight: 500;
-  color: #00b894;
+  color: #ededed;
 }
 
-/* Toast 提示 */
+body.light .slot-status { color: #1a1a1a; }
+
+.waiting-hint {
+  color: #888888;
+  margin-bottom: 20px;
+  font-size: 0.9rem;
+}
+
+body.light .waiting-hint { color: #666666; }
+
+.loading-spinner {
+  width: 36px;
+  height: 36px;
+  border: 3px solid #222222;
+  border-top: 3px solid #ededed;
+  border-radius: 50%;
+  margin: 20px auto;
+  animation: spin 1s linear infinite;
+}
+
+body.light .loading-spinner {
+  border-color: #dddddd;
+  border-top-color: #1a1a1a;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.btn-cancel {
+  background: transparent;
+  color: #888888;
+  border: 1px solid #333333;
+  margin-top: 20px;
+}
+
+body.light .btn-cancel {
+  background: #ffffff;
+  color: #666666;
+  border-color: #e0e0e0;
+}
+
+body.light .btn-cancel:hover {
+  border-color: #cccccc;
+  color: #1a1a1a;
+}
+
+.btn-cancel:hover {
+  border-color: #555555;
+  color: #ededed;
+}
+
+body.light .btn-cancel:hover {
+  border-color: #999999;
+  color: #1a1a1a;
+}
+
+/* ===== 游戏界面 ===== */
+.room-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  padding: 10px 16px;
+  background: #0a0a0a;
+  border: 1px solid #222222;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  color: #888888;
+}
+
+body.light .room-info {
+  background: #f5f5f5;
+  border-color: #dddddd;
+  color: #666666;
+}
+
+.room-info strong {
+  font-family: monospace;
+  letter-spacing: 2px;
+  color: #ededed;
+}
+
+body.light .room-info strong { color: #1a1a1a; }
+
+#player-role {
+  font-weight: 500;
+  color: #ededed;
+}
+
+body.light #player-role { color: #1a1a1a; }
+
+.game-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  padding: 12px 16px;
+  background: #0a0a0a;
+  border: 1px solid #222222;
+  border-radius: 8px;
+}
+
+body.light .game-info {
+  background: #f5f5f5;
+  border-color: #dddddd;
+}
+
+.player-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.9rem;
+}
+
+.player-name.black {
+  color: #ededed;
+  font-weight: 600;
+}
+
+body.light .player-name.black { color: #1a1a1a; }
+
+.player-name.white {
+  color: #888888;
+  font-weight: 600;
+}
+
+body.light .player-name.white { color: #666666; }
+
+.player-color {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 2px solid #444444;
+}
+
+body.light .player-color { border-color: #cccccc; }
+
+.player-color.black {
+  background: #ededed;
+  border-color: #ededed;
+}
+
+body.light .player-color.black {
+  background: #333333;
+  border-color: #333333;
+}
+
+.player-color.white {
+  background: #333333;
+  border-color: #555555;
+}
+
+body.light .player-color.white {
+  background: #ffffff;
+  border-color: #cccccc;
+}
+
+.wall-count {
+  color: #888888;
+  font-weight: 500;
+}
+
+body.light .wall-count { color: #666666; }
+
+.current-turn {
+  font-weight: 600;
+  color: #000000;
+  font-size: 1.1rem;
+  padding: 6px 16px;
+  min-height: 36px;
+  line-height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #ededed;
+  border-radius: 20px;
+  min-width: 140px;
+  text-align: center;
+}
+
+body.light .current-turn {
+  background: #1a1a1a;
+  color: #ffffff;
+}
+
+canvas {
+  display: block;
+  margin: 0 auto 16px;
+  border: 2px solid #333333;
+  border-radius: 8px;
+  cursor: pointer;
+  width: 100%;
+  height: auto;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+body.light canvas {
+  border-color: #dddddd;
+}
+
+/* 墙壁选择器 */
+.wall-selector {
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+  margin-top: 12px;
+  margin-bottom: 16px;
+  padding: 14px 20px;
+  background: #0a0a0a;
+  border: 1px solid #222222;
+  border-radius: 12px;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+body.light .wall-selector {
+  background: #f5f5f5;
+  border-color: #dddddd;
+}
+
+.wall-type {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 130px;
+  height: 100px;
+  background: #111111;
+  border: 1px solid #333333;
+  border-radius: 12px;
+  cursor: grab;
+  transition: all 0.2s ease;
+  user-select: none;
+  touch-action: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+body.light .wall-type {
+  background: #ffffff;
+  border-color: #dddddd;
+}
+
+.wall-type:hover {
+  border-color: #666666;
+  background: #1a1a1a;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(255, 255, 255, 0.05);
+}
+
+body.light .wall-type:hover {
+  border-color: #aaaaaa;
+  background: #f0f0f0;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.wall-type:active {
+  cursor: grabbing;
+  transform: scale(0.96);
+}
+
+.wall-type span {
+  font-size: 1.05rem;
+  font-weight: 500;
+  color: #888888;
+  line-height: 1;
+  margin-top: auto;
+}
+
+body.light .wall-type span { color: #666666; }
+
+.wall-preview {
+  width: 74px;
+  height: 14px;
+  background: linear-gradient(180deg, #555555 0%, #333333 100%);
+  border-radius: 7px;
+  border: 1px solid #666666;
+  margin-top: 30px;
+}
+
+body.light .wall-preview {
+  background: linear-gradient(180deg, #aaaaaa 0%, #888888 100%);
+  border-color: #999999;
+}
+
+.wall-preview.vertical {
+  width: 14px;
+  height: 64px;
+  margin-top: 6px;
+}
+
+/* 手机端拖动预览 */
+.drag-preview {
+  position: fixed;
+  pointer-events: none;
+  z-index: 1000;
+  transform: translate(-50%, -50%);
+}
+
+.drag-preview-wall {
+  width: 80px;
+  height: 14px;
+  background: rgba(150, 150, 150, 0.5);
+  border: 2px dashed #888888;
+  border-radius: 7px;
+}
+
+body.light .drag-preview-wall {
+  background: rgba(100, 100, 100, 0.3);
+  border-color: #666666;
+}
+
+.drag-preview-wall.vertical {
+  width: 14px;
+  height: 80px;
+}
+
+/* 控制按钮 */
+.controls {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.btn-undo {
+  background: transparent;
+  color: #888888;
+  border: 1px solid #333333;
+}
+
+body.light .btn-undo {
+  background: #ffffff;
+  color: #666666;
+  border-color: #e0e0e0;
+}
+
+body.light .btn-undo:hover {
+  border-color: #cccccc;
+  color: #1a1a1a;
+}
+
+.btn-undo:hover {
+  border-color: #555555;
+  color: #ededed;
+}
+
+body.light .btn-undo:hover {
+  border-color: #999999;
+  color: #1a1a1a;
+}
+
+/* 游戏规则 */
+.rules {
+  background: #0a0a0a;
+  border: 1px solid #222222;
+  padding: 16px;
+  border-radius: 8px;
+  text-align: left;
+}
+
+body.light .rules {
+  background: #f5f5f5;
+  border-color: #dddddd;
+}
+
+.rules h3 {
+  color: #ededed;
+  margin-bottom: 12px;
+  font-size: 1rem;
+}
+
+body.light .rules h3 { color: #1a1a1a; }
+
+.rules ul {
+  list-style: none;
+  padding: 0;
+}
+
+.rules li {
+  padding: 4px 0;
+  color: #888888;
+  font-size: 0.9rem;
+}
+
+body.light .rules li { color: #666666; }
+
+.rules li::before {
+  content: "• ";
+  color: #555555;
+}
+
+body.light .rules li::before { color: #999999; }
+
+/* ===== 弹窗 ===== */
+.modal {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.85);
+  justify-content: center;
+  align-items: center;
+  z-index: 100;
+}
+
+body.light .modal {
+  background: rgba(0, 0, 0, 0.5);
+}
+
+.modal.show {
+  display: flex;
+}
+
+.modal-content {
+  background: #0a0a0a;
+  border: 1px solid #333333;
+  padding: 40px;
+  border-radius: 16px;
+  text-align: center;
+  animation: popIn 0.3s ease;
+  max-width: 400px;
+  width: 90%;
+}
+
+body.light .modal-content {
+  background: #ffffff;
+  border-color: #dddddd;
+}
+
+.modal-content h2 {
+  color: #ededed;
+  margin-bottom: 20px;
+  font-size: 1.8rem;
+  font-weight: 700;
+}
+
+body.light .modal-content h2 { color: #1a1a1a; }
+
+.win-buttons {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  margin-top: 20px;
+}
+
+.btn-restart {
+  background: #ededed;
+  color: #000000;
+}
+
+body.light .btn-restart {
+  background: #ffffff;
+  color: #1a1a1a;
+  border: 1px solid #e0e0e0;
+}
+
+body.light .btn-restart:hover {
+  background: #f5f5f5;
+}
+
+.btn-restart:hover {
+  background: #ffffff;
+}
+
+body.light .btn-restart:hover {
+  background: #333333;
+}
+
+.restart-notify {
+  margin-bottom: 15px;
+}
+
+.notify-bubble {
+  display: inline-block;
+  padding: 8px 16px;
+  background: #111111;
+  border: 1px solid #333333;
+  border-radius: 20px;
+  color: #ededed;
+  font-size: 0.9rem;
+  font-weight: 500;
+  animation: bounce 0.6s ease infinite alternate;
+}
+
+body.light .notify-bubble {
+  background: #f5f5f5;
+  border-color: #dddddd;
+  color: #1a1a1a;
+}
+
+@keyframes bounce {
+  from { transform: translateY(0); }
+  to { transform: translateY(-5px); }
+}
+
+@keyframes popIn {
+  from {
+    transform: scale(0.9);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.modal-content p {
+  color: #888888;
+  margin-bottom: 20px;
+}
+
+body.light .modal-content p { color: #666666; }
+
+.modal-content .waiting-text {
+  color: #ededed;
+  margin-bottom: 15px;
+}
+
+body.light .modal-content .waiting-text { color: #1a1a1a; }
+
+/* ===== Toast 提示 ===== */
 .toast {
   position: fixed;
   top: 20px;
   left: 50%;
   transform: translateX(-50%) translateY(-120%);
-  background: rgba(0, 0, 0, 0.82);
-  color: #fff;
+  background: #ededed;
+  color: #000000;
   padding: 10px 24px;
   border-radius: 8px;
   font-size: 0.95rem;
+  font-weight: 500;
   z-index: 10000;
   opacity: 0;
   transition: transform 0.3s ease, opacity 0.3s ease;
   pointer-events: none;
 }
+
+body.light .toast {
+  background: #1a1a1a;
+  color: #ffffff;
+}
+
+/* Theme Toggle */
+.theme-toggle {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+  z-index: 1000;
+  background: #ededed;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+}
+
+body.light .theme-toggle {
+  background: #1a1a1a;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+}
+
+.theme-toggle svg {
+  width: 22px;
+  height: 22px;
+}
+
+.theme-toggle .icon-sun { display: none; }
+.theme-toggle .icon-moon { display: block; }
+body.light .theme-toggle .icon-sun { display: block; }
+body.light .theme-toggle .icon-moon { display: none; }
+
 .toast.show {
   transform: translateX(-50%) translateY(0);
   opacity: 1;
 }
 
-/* ============ 手机端响应式 (< 768px) ============ */
+/* ===== 手机端响应式 (< 768px) ===== */
 @media (max-width: 768px) {
   body {
     padding: 0;
@@ -836,19 +1416,17 @@ canvas {
 
   .container {
     padding: 7px;
-    border-radius: 0;
-    box-shadow: none;
     max-width: 100%;
   }
 
   h1 {
-    font-size: 1.6rem;
+    font-size: 2rem;
     margin-bottom: 2px;
   }
 
   .subtitle {
-    font-size: 0.75rem;
-    margin-bottom: 8px;
+    font-size: 0.8rem;
+    margin-bottom: 12px;
   }
 
   .game-info {
@@ -873,14 +1451,13 @@ canvas {
   }
 
   .current-turn {
-    font-size: 0.95rem;
+    font-size: 0.9rem;
     padding: 5px 12px;
-    min-height: 32px;
-    line-height: 32px;
+    min-height: 30px;
+    line-height: 30px;
     min-width: 100px;
   }
 
-  /* 棋盘填满屏幕，保持正方形 */
   canvas {
     width: calc(100vw - 14px) !important;
     height: calc(100vw - 14px) !important;
@@ -891,7 +1468,6 @@ canvas {
     border-radius: 6px;
   }
 
-  /* 墙壁选择器 */
   .wall-selector {
     margin: 0 0 8px;
     padding: 8px 6px;
@@ -902,12 +1478,12 @@ canvas {
   .wall-type {
     width: 100px;
     height: 70px;
-    border-width: 1.5px;
+    border-width: 1px;
     border-radius: 6px;
   }
 
   .wall-type span {
-    font-size: 1.05rem;
+    font-size: 1rem;
   }
 
   .wall-preview {
@@ -922,7 +1498,6 @@ canvas {
     margin-top: 6px;
   }
 
-  /* 控制按钮 */
   .controls {
     margin-bottom: 8px;
     gap: 10px;
@@ -930,14 +1505,14 @@ canvas {
 
   .btn {
     padding: 12px 28px;
-    font-size: 1.1rem;
+    font-size: 1rem;
     min-height: 44px;
-    border-radius: 10px;
+    border-radius: 8px;
   }
 
   .btn-primary, .btn-join {
     padding: 14px 32px;
-    font-size: 1.2rem;
+    font-size: 1.1rem;
     max-width: 100%;
     min-height: 50px;
   }
@@ -948,11 +1523,10 @@ canvas {
   }
 
   .btn-undo {
-    font-size: 1rem;
+    font-size: 0.95rem;
     padding: 10px 20px;
   }
 
-  /* 游戏规则 */
   .rules {
     padding: 10px;
     border-radius: 6px;
@@ -968,7 +1542,6 @@ canvas {
     padding: 3px 0;
   }
 
-  /* 房间界面 */
   .room-section {
     padding: 20px 10px;
   }
@@ -996,7 +1569,6 @@ canvas {
     padding-top: 15px;
   }
 
-  /* 等待界面 */
   .waiting-section {
     padding: 20px 10px;
   }
@@ -1049,7 +1621,6 @@ canvas {
     margin-bottom: 15px;
   }
 
-  /* 创建房间 */
   .create-room-section {
     padding: 20px 10px;
   }
@@ -1070,18 +1641,17 @@ canvas {
   }
 
   .create-room-buttons {
-    gap: 12px;
+    gap: 10px;
   }
 
   .create-room-buttons .btn,
   .create-room-buttons .btn-cancel {
     padding: 12px 20px;
-    font-size: 1rem;
+    font-size: 0.95rem;
     max-width: none;
     min-height: 48px;
   }
 
-  /* 加入房间 */
   .join-room-section {
     margin-top: 15px;
   }
@@ -1101,7 +1671,6 @@ canvas {
     font-size: 1.2rem;
   }
 
-  /* 房间列表 */
   .room-list {
     max-height: 250px;
   }
@@ -1125,7 +1694,6 @@ canvas {
     min-height: 36px;
   }
 
-  /* 弹窗 */
   .modal-content {
     padding: 24px 20px;
     margin: 10px;
@@ -1147,7 +1715,6 @@ canvas {
     min-height: 48px;
   }
 
-  /* 房间信息 */
   .room-info {
     padding: 8px 12px;
     font-size: 0.8rem;
@@ -1162,7 +1729,6 @@ canvas {
     font-size: 0.8rem;
   }
 
-  /* Toast */
   .toast {
     top: 10px;
     padding: 10px 20px;
@@ -1170,7 +1736,6 @@ canvas {
     border-radius: 6px;
   }
 
-  /* 拖动预览 */
   .drag-preview-wall {
     width: 70px;
     height: 12px;
@@ -1194,5 +1759,10 @@ canvas {
   .notify-bubble {
     font-size: 0.85rem;
     padding: 10px 18px;
+  }
+
+  .other-games {
+    margin-top: 15px;
+    padding-top: 15px;
   }
 }

@@ -422,6 +422,11 @@ function handleGameStateUpdate(newState) {
   if (!gameState) return;
 
   const wasGameOver = gameState.gameOver;
+  const oldBoard = gameState.board.map(r => r.map(c => c ? { ...c } : null));
+  const oldCaptured = {
+    0: { ...(gameState.captured[0] || {}) },
+    1: { ...(gameState.captured[1] || {}) }
+  };
 
   // 更新游戏状态
   gameState.board = newState.board;
@@ -436,6 +441,33 @@ function handleGameStateUpdate(newState) {
   showUndoButton();
   updateCapturedPieces();
   render();
+
+  // 对方走棋音效
+  if (oldState && newState.player2Joined && oldState.currentPlayer !== newState.currentPlayer) {
+    const myIndex = multiplayerState.myPlayerIndex;
+    const movedByOpponent = newState.lastMoveBy !== undefined && newState.lastMoveBy !== myIndex;
+    if (movedByOpponent && newState.lastMove) {
+      const { toRow, toCol } = newState.lastMove;
+      const newPiece = newState.board[toRow] && newState.board[toRow][toCol];
+      const oldPiece = oldBoard[toRow] && oldBoard[toRow][toCol];
+
+      if (newPiece && newPiece.promoted && oldPiece && !oldPiece.promoted) {
+        SoundManager.playStartSound();
+        const fromName = PIECE_FULL_NAMES[oldPiece.type] || PIECE_CHARS[oldPiece.type] || '';
+        const toName = PROMOTED_NAMES[oldPiece.type] || '';
+        showToast(`${fromName} 升变为 ${toName}！`);
+      } else if (newPiece && !newPiece.promoted && oldPiece && oldPiece.type !== newPiece.type) {
+        SoundManager.playStartSound();
+        const fromName = PIECE_FULL_NAMES[oldPiece.type] || PIECE_CHARS[oldPiece.type] || '';
+        const toName = PROMOTED_NAMES[oldPiece.type] || '';
+        showToast(`${fromName} 升变为 ${toName}！`);
+      } else if (newPiece && oldPiece && oldPiece.owner !== newPiece.owner) {
+        SoundManager.playWallSound();
+      } else {
+        SoundManager.playMoveSound();
+      }
+    }
+  }
 
   if (newState.gameOver && !wasGameOver) {
     SoundManager.playWinSound();

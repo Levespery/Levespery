@@ -147,6 +147,13 @@ function updateTurnIndicator() {
   const indicator = document.getElementById('turn-indicator');
   if (!indicator || !gameState) return;
 
+  if (gameState.gameOver) {
+    const winnerName = gameState.winner === 0 ? '玉将' : '王将';
+    indicator.textContent = `${winnerName}获胜！`;
+    indicator.style.background = '#c8e6c9';
+    return;
+  }
+
   if (multiplayerState.isOnline) {
     if (gameState.currentPlayer === multiplayerState.myPlayerIndex) {
       indicator.textContent = '轮到你了！';
@@ -170,11 +177,11 @@ function updateTurnIndicator() {
   }
 }
 
-// 显示/隐藏悔棋按钮
+// 显示/隐藏悔棋按钮（任何时候只要有历史记录就显示）
 function showUndoButton() {
   const btn = document.getElementById('undo-btn');
   if (!btn) return;
-  if (gameState.lastMoveBy >= 0 && gameState.lastMoveBy !== gameState.currentPlayer && !gameState.gameOver) {
+  if (moveHistory.length > 0 && !gameState.gameOver) {
     btn.style.display = 'inline-block';
   } else {
     btn.style.display = 'none';
@@ -406,9 +413,9 @@ function executeMove(fromRow, fromCol, toRow, toCol, promote) {
   if (isCheckmate(gameState, opp)) {
     gameState.gameOver = true;
     gameState.winner = gameState.currentPlayer;
-    // 先显示绝杀提示，5秒后显示结算
     showToast('绝杀！', 3000);
     SoundManager.playWinSound();
+    if (multiplayerState.isOnline) syncGameState();
     render();
     setTimeout(() => {
       const winnerName = gameState.currentPlayer === 0 ? '玉将' : '王将';
@@ -477,6 +484,7 @@ function executeDrop(pieceType, toRow, toCol) {
     gameState.winner = player;
     showToast('绝杀！', 3000);
     SoundManager.playWinSound();
+    if (multiplayerState.isOnline) syncGameState();
     updateCapturedPieces();
     render();
     setTimeout(() => {
@@ -604,11 +612,10 @@ function saveMoveHistory(entry) {
 // 悔棋
 function undoMove() {
   if (moveHistory.length === 0 || gameState.gameOver) return;
-  if (multiplayerState.isOnline) return;
 
   // AI 模式：悔两步（AI 的一步 + 玩家的一步）
   const stepsToUndo = aiMode ? 2 : 1;
-  if (moveHistory.length < stepsToUndo) return;
+  if (moveHistory.length <= stepsToUndo) return;
 
   for (let i = 0; i < stepsToUndo; i++) {
     const lastEntry = moveHistory.pop();
@@ -651,6 +658,11 @@ function undoMove() {
   showUndoButton();
   updateCapturedPieces();
   render();
+
+  // 在线模式：同步悔棋状态给对手
+  if (multiplayerState.isOnline) {
+    syncGameState();
+  }
 }
 
 // 重置游戏（在线模式新对手加入时）
@@ -744,20 +756,90 @@ function drawBoard() {
 function drawLastMove() {
   if (!lastMove) return;
 
-  ctx.fillStyle = COLORS.lastMove;
-  const cells = [
-    [lastMove.fromRow, lastMove.fromCol],
-    [lastMove.toRow, lastMove.toCol]
-  ];
-  for (const [r, c] of cells) {
-    if (r < 0) continue;
-    const vr = visualRow(r);
-    const vc = visualCol(c);
+  const { fromRow, fromCol, toRow, toCol } = lastMove;
+
+  // 起点：柔和高亮 + 小箭头指示方向
+  if (fromRow >= 0) {
+    const fvr = visualRow(fromRow);
+    const fvc = visualCol(fromCol);
+    const fx = GRID_OFFSET + fvc * CELL_SIZE + CELL_SIZE / 2;
+    const fy = GRID_OFFSET + fvr * CELL_SIZE + CELL_SIZE / 2;
+
+    ctx.fillStyle = 'rgba(255, 200, 80, 0.25)';
     ctx.fillRect(
-      GRID_OFFSET + vc * CELL_SIZE,
-      GRID_OFFSET + vr * CELL_SIZE,
+      GRID_OFFSET + fvc * CELL_SIZE,
+      GRID_OFFSET + fvr * CELL_SIZE,
       CELL_SIZE, CELL_SIZE
     );
+
+    // 小圆环标记起点
+    ctx.beginPath();
+    ctx.arc(fx, fy, 12, 0, Math.PI * 2);
+    ctx.strokeStyle = 'rgba(200, 150, 50, 0.6)';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+  }
+
+  // 终点：醒目高亮 + 圆环
+  const tvr = visualRow(toRow);
+  const tvc = visualCol(toCol);
+  const tx = GRID_OFFSET + tvc * CELL_SIZE + CELL_SIZE / 2;
+  const ty = GRID_OFFSET + tvr * CELL_SIZE + CELL_SIZE / 2;
+
+  ctx.fillStyle = 'rgba(255, 200, 80, 0.35)';
+  ctx.fillRect(
+    GRID_OFFSET + tvc * CELL_SIZE,
+    GRID_OFFSET + tvr * CELL_SIZE,
+    CELL_SIZE, CELL_SIZE
+  );
+
+  ctx.beginPath();
+  ctx.arc(tx, ty, 14, 0, Math.PI * 2);
+  ctx.strokeStyle = 'rgba(220, 160, 30, 0.8)';
+  ctx.lineWidth = 2.5;
+  ctx.stroke();
+
+  // 绘制从起点到终点的箭头连线
+  if (fromRow >= 0) {
+    const fvr = visualRow(fromRow);
+    const fvc = visualCol(fromCol);
+    const fx = GRID_OFFSET + fvc * CELL_SIZE + CELL_SIZE / 2;
+    const fy = GRID_OFFSET + fvr * CELL_SIZE + CELL_SIZE / 2;
+
+    const dx = tx - fx;
+    const dy = ty - fy;
+    const len = Math.sqrt(dx * dx + dy * dy);
+    if (len > 0) {
+      const ndx = dx / len;
+      const ndy = dy / len;
+
+      ctx.beginPath();
+      ctx.moveTo(fx + ndx * 14, fy + ndy * 14);
+      ctx.lineTo(tx - ndx * 14, ty - ndy * 14);
+      ctx.strokeStyle = 'rgba(220, 160, 30, 0.5)';
+      ctx.lineWidth = 2;
+      ctx.setLineDash([4, 4]);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      // 箭头头部
+      const headLen = 10;
+      const headAngle = 0.45;
+      ctx.beginPath();
+      ctx.moveTo(tx - ndx * 14, ty - ndy * 14);
+      ctx.lineTo(
+        tx - ndx * 14 - headLen * Math.cos(Math.atan2(dy, dx) - headAngle),
+        ty - ndy * 14 - headLen * Math.sin(Math.atan2(dy, dx) - headAngle)
+      );
+      ctx.moveTo(tx - ndx * 14, ty - ndy * 14);
+      ctx.lineTo(
+        tx - ndx * 14 - headLen * Math.cos(Math.atan2(dy, dx) + headAngle),
+        ty - ndy * 14 - headLen * Math.sin(Math.atan2(dy, dx) + headAngle)
+      );
+      ctx.strokeStyle = 'rgba(220, 160, 30, 0.8)';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+    }
   }
 }
 
@@ -778,7 +860,7 @@ function drawSelectedCell() {
 // 绘制合法走法点（普通移动 + 打入）
 function drawValidMoveDots() {
   for (const move of validMoves) {
-    if (move.isCapture) continue; // 吃子点单独绘制
+    if (move.isCapture) continue;
     const vr = visualRow(move.row);
     const vc = visualCol(move.col);
     const x = GRID_OFFSET + vc * CELL_SIZE + CELL_SIZE / 2;
@@ -801,7 +883,6 @@ function drawValidMoveDots() {
   }
 }
 
-// 绘制吃子预览（小红点，在棋子上方显示）
 function drawCaptureDots() {
   for (const move of validMoves) {
     if (!move.isCapture) continue;
@@ -814,6 +895,25 @@ function drawCaptureDots() {
     ctx.arc(x, y, 7, 0, Math.PI * 2);
     ctx.fillStyle = 'rgba(200, 40, 40, 0.85)';
     ctx.fill();
+  }
+}
+
+// 绘制吃子预览（小红点，在棋子上方显示）
+function drawCaptureDots() {
+  for (const move of validMoves) {
+    if (!move.isCapture) continue;
+    const vr = visualRow(move.row);
+    const vc = visualCol(move.col);
+    const x = GRID_OFFSET + vc * CELL_SIZE + CELL_SIZE / 2;
+    const y = GRID_OFFSET + vr * CELL_SIZE + CELL_SIZE / 2;
+
+    ctx.beginPath();
+    ctx.arc(x, y, 9, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(220, 50, 50, 0.75)';
+    ctx.fill();
+    ctx.strokeStyle = '#cc3333';
+    ctx.lineWidth = 2;
+    ctx.stroke();
   }
 }
 

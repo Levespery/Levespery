@@ -38,6 +38,36 @@
     </div>
   </div>
 
+  <!-- AI 难度选择界面 -->
+  <div class="container" id="ai-difficulty-container" style="display:none">
+    <div class="back-button" onclick="cancelDifficultySelection()">
+      <span class="back-arrow">←</span>
+      <span>返回</span>
+    </div>
+    <h1>路墙棋</h1>
+    <p class="subtitle">Levesper</p>
+
+    <div class="difficulty-section">
+      <h2>选择难度</h2>
+      <p class="difficulty-desc">选择 AI 难度开始人机对战</p>
+
+      <div class="difficulty-options">
+        <button class="btn btn-difficulty btn-difficulty-easy" onclick="selectDifficulty('easy')">
+          <div class="difficulty-name">简单</div>
+          <div class="difficulty-hint">适合新手玩家</div>
+        </button>
+        <button class="btn btn-difficulty btn-difficulty-medium" onclick="selectDifficulty('medium')">
+          <div class="difficulty-name">中等</div>
+          <div class="difficulty-hint">有一定挑战</div>
+        </button>
+        <button class="btn btn-difficulty btn-difficulty-hard" onclick="selectDifficulty('hard')">
+          <div class="difficulty-name">困难</div>
+          <div class="difficulty-hint">高手才能赢</div>
+        </button>
+      </div>
+    </div>
+  </div>
+
   <!-- 加入房间界面 -->
   <div class="container" id="join-room-container" style="display:none">
     <div class="back-button" onclick="cancelJoinRoom()">
@@ -210,14 +240,42 @@
     </svg>
   </button>
 
-  <script src="js/sound.js?t=1750284200"></script>
-  <script src="js/game.js?t=1750284200"></script>
-  <script src="js/ai.js?t=1750284200"></script>
-  <script src="js/multiplayer.js?t=1750284200"></script>
+  <script src="js/sound.js?t=1750400005"></script>
+  <script src="js/game.js?t=1750400005"></script>
+  <script src="js/smart-ai.js?t=1750400005"></script>
+  <script src="js/qtable.js?t=1750400005"></script>
+  <script src="js/ai.js?t=1750400005"></script>
+  <script src="js/multiplayer.js?t=1750400000"></script>
   <script>
     function toggleTheme() {
+      const btn = document.querySelector('.theme-toggle');
+      const rect = btn.getBoundingClientRect();
+      const cx = rect.left + rect.width / 2;
+      const cy = rect.top + rect.height / 2;
+      const goingLight = !document.body.classList.contains('light');
+      document.body.style.setProperty('--ripple-color', goingLight ? '#ffffff' : '#000000');
+      document.body.style.setProperty('--rx', cx + 'px');
+      document.body.style.setProperty('--ry', cy + 'px');
+
+      const allEls = document.querySelectorAll('body *');
+      const maxDist = Math.hypot(window.innerWidth, window.innerHeight);
+      const dur = 0.5;
+      allEls.forEach(el => {
+        const r = el.getBoundingClientRect();
+        const d = Math.hypot(r.left + r.width / 2 - cx, r.top + r.height / 2 - cy);
+        const delay = Math.min(d / maxDist * dur, dur);
+        el.style.transition = 'color ' + dur + 's ease ' + delay + 's, background-color ' + dur + 's ease ' + delay + 's, background ' + dur + 's ease ' + delay + 's, border-color ' + dur + 's ease ' + delay + 's, box-shadow ' + dur + 's ease ' + delay + 's';
+      });
+
+      document.body.classList.remove('rippling');
+      void document.body.offsetWidth;
+      document.body.classList.add('rippling');
       document.body.classList.toggle('light');
       localStorage.setItem('theme', document.body.classList.contains('light') ? 'light' : 'dark');
+      setTimeout(() => {
+        document.body.classList.remove('rippling');
+        allEls.forEach(el => { el.style.transition = ''; });
+      }, 1000);
     }
     (function() {
       if (localStorage.getItem('theme') === 'light') {

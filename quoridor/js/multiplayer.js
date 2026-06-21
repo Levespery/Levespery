@@ -28,6 +28,16 @@ function initSupabase() {
   }
 }
 
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+function escapeAttr(str) {
+  return str.replace(/&/g, '&amp;').replace(/'/g, '&#39;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
 // 页面加载后初始化
 window.addEventListener('DOMContentLoaded', () => {
   // 延迟一点确保 SDK 已加载
@@ -79,14 +89,10 @@ let heartbeatTimer = null;
 const HEARTBEAT_INTERVAL = 10000; // 10秒心跳间隔
 const HEARTBEAT_TIMEOUT = 25000;  // 25秒无心跳认为对方离线
 
-// #region agent log
-const _DBG = 'http://127.0.0.1:7337/ingest/6c759ce4-4672-4e6a-ac30-de089d8ba20c';
-const _SID = '6c759ce4-4672-4e6a-ac30-de089d8ba20c';
-function _dbg(loc, msg, data) {
-  fetch(_DBG, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': _SID },
-    body: JSON.stringify({ sessionId: _SID, location: loc, message: msg, data: data || {}, timestamp: Date.now() })
-  }).catch(() => {});
-}
+// 调试函数已禁用
+function _dbg() {}
+
+
 // #endregion
 
 // 创建房间
@@ -418,9 +424,9 @@ function renderRoomList(rooms) {
   if (waitingRooms.length > 0) {
     html += waitingRooms.map(room => `
     <div class="room-item">
-      <span class="room-item-name">${room.room_name}</span>
+      <span class="room-item-name">${escapeHtml(room.room_name)}</span>
       <span class="room-item-status">等待中</span>
-      <button class="room-item-join" onclick="joinRoomByName('${room.id}', '${room.room_name}')">加入</button>
+      <button class="room-item-join" onclick="joinRoomByName('${escapeAttr(room.id)}', '${escapeAttr(room.room_name)}')">加入</button>
     </div>
   `).join('');
   }
@@ -428,9 +434,9 @@ function renderRoomList(rooms) {
   if (guestLeftRooms.length > 0) {
     html += guestLeftRooms.map(room => `
     <div class="room-item">
-      <span class="room-item-name">${room.room_name}</span>
+      <span class="room-item-name">${escapeHtml(room.room_name)}</span>
       <span class="room-item-status" style="color:#e17055">对手已离开</span>
-      <button class="room-item-join" onclick="joinRoomByName('${room.id}', '${room.room_name}')">加入</button>
+      <button class="room-item-join" onclick="joinRoomByName('${escapeAttr(room.id)}', '${escapeAttr(room.room_name)}')">加入</button>
     </div>
   `).join('');
   }
@@ -438,7 +444,7 @@ function renderRoomList(rooms) {
   if (playingRooms.length > 0) {
     html += playingRooms.map(room => `
     <div class="room-item">
-      <span class="room-item-name">${room.room_name}</span>
+      <span class="room-item-name">${escapeHtml(room.room_name)}</span>
       <span class="room-item-status" style="color:#e17055">游戏中</span>
     </div>
   `).join('');
@@ -678,10 +684,10 @@ function handleGameStateUpdate(newState) {
   // 检测对方悔棋（lastMoveBy 变为 -1）
   const opponentUndone = newState.lastMoveBy === -1 && gameState.lastMoveBy >= 0;
 
-  // 更新游戏状态
-  gameState.players = newState.players;
+  // 更新游戏状态（深拷贝避免引用污染）
+  gameState.players = JSON.parse(JSON.stringify(newState.players));
   gameState.currentPlayer = newState.currentPlayer;
-  gameState.walls = newState.walls;
+  gameState.walls = JSON.parse(JSON.stringify(newState.walls));
   gameState.gameOver = newState.gameOver;
   gameState.winner = newState.winner;
   gameState.lastMoveBy = newState.lastMoveBy !== undefined ? newState.lastMoveBy : -1;
@@ -898,9 +904,9 @@ async function syncGameState() {
   _dbg('multiplayer.js:syncGameState', '同步状态', { gameOver: gameState.gameOver, currentPlayer: gameState.currentPlayer });
   // #endregion
   const stateToSync = {
-    players: gameState.players,
+    players: JSON.parse(JSON.stringify(gameState.players)),
     currentPlayer: gameState.currentPlayer,
-    walls: gameState.walls,
+    walls: JSON.parse(JSON.stringify(gameState.walls)),
     gameOver: gameState.gameOver,
     winner: gameState.winner,
     lastMoveBy: gameState.lastMoveBy,
@@ -1020,6 +1026,7 @@ function startGame(initialState, isOnline) {
   } else {
     canvas.addEventListener('click', handleClick);
   }
+  canvas.removeEventListener('mousemove', handleMouseMove);
   canvas.addEventListener('mousemove', handleMouseMove);
 
   // 播放开局音效
@@ -1113,7 +1120,9 @@ function startLocalPlay() {
     currentPlayer: 0,
     walls: [],
     gameOver: false,
-    hoverWall: null
+    hoverWall: null,
+    lastMoveBy: -1,
+    positionsSwapped: false
   };
 
   moveHistory = [];
@@ -1131,20 +1140,38 @@ function startLocalPlay() {
   initWallDrag();
 }
 
-// 人机对战
+// 人机对战 - 显示难度选择
 function startAIPlay() {
+  console.log('显示 AI 难度选择');
+  document.getElementById('room-container').style.display = 'none';
+  document.getElementById('ai-difficulty-container').style.display = 'block';
+}
+
+// 取消难度选择
+function cancelDifficultySelection() {
+  document.getElementById('ai-difficulty-container').style.display = 'none';
+  document.getElementById('room-container').style.display = 'block';
+}
+
+// 选择难度并启动游戏
+function selectDifficulty(difficulty) {
+  console.log('选择难度:', difficulty);
+  AI.setDifficulty(difficulty);
+  startAIGame();
+}
+
+// 人机对战 - 实际启动游戏
+function startAIGame() {
   console.log('启动人机对战');
   multiplayerState.isOnline = false;
   aiMode = true;
   document.getElementById('room-container').style.display = 'none';
+  document.getElementById('ai-difficulty-container').style.display = 'none';
   document.getElementById('create-room-container').style.display = 'none';
   document.getElementById('join-room-container').style.display = 'none';
   document.getElementById('waiting-container').style.display = 'none';
   document.getElementById('game-container').style.display = 'block';
   document.getElementById('room-info').style.display = 'none';
-
-  // 初始化 AI 训练数据
-  AI.initTraining();
 
   // 显示墙壁选择器
   const wallSelector = document.getElementById('wall-selector');
@@ -1588,6 +1615,7 @@ function returnToLobby() {
   document.getElementById('opponent-left-modal').classList.remove('show');
   document.getElementById('restart-notify').style.display = 'none';
   document.getElementById('room-container').style.display = 'block';
+  document.getElementById('ai-difficulty-container').style.display = 'none';
   document.getElementById('create-room-container').style.display = 'none';
   document.getElementById('join-room-container').style.display = 'none';
   document.getElementById('waiting-container').style.display = 'none';
@@ -1760,6 +1788,15 @@ async function notifyRestart() {
       .eq('id', multiplayerState.roomId);
 
     if (error) console.error('发送再来一局通知失败:', error);
+    
+    // 广播再局请求给对手
+    if (multiplayerState.subscription) {
+      multiplayerState.subscription.send({
+        type: 'broadcast',
+        event: 'state_update',
+        payload: { state: { ...gameState, restartRequest: multiplayerState.myPlayerIndex } }
+      });
+    }
   } catch (e) {
     console.error('发送通知错误:', e);
   }
@@ -1775,7 +1812,11 @@ let dragState = {
   lastRenderTime: 0
 };
 
+let wallDragInitialized = false;
+
 function initWallDrag() {
+  if (wallDragInitialized) return;
+  
   const wallH = document.getElementById('wall-h');
   const wallV = document.getElementById('wall-v');
 
@@ -1791,6 +1832,8 @@ function initWallDrag() {
   document.addEventListener('touchmove', onDrag, { passive: false });
   document.addEventListener('mouseup', endDrag);
   document.addEventListener('touchend', endDrag);
+  
+  wallDragInitialized = true;
 }
 
 function startDrag(e, wallType) {

@@ -18,6 +18,27 @@ body {
   -webkit-user-select: none;
   user-select: none;
   transition: background 0.3s, color 0.3s;
+  isolation: isolate;
+}
+
+body::before {
+  content: '';
+  position: fixed;
+  top: 0; left: 0;
+  width: 100vw; height: 100vh;
+  z-index: -1;
+  pointer-events: none;
+  background: var(--ripple-color, #000);
+  clip-path: circle(0% at var(--rx, 50%) var(--ry, 50%));
+}
+
+body.rippling::before {
+  animation: theme-ripple-in 0.5s ease-in-out forwards;
+}
+
+@keyframes theme-ripple-in {
+  from { clip-path: circle(0% at var(--rx, 50%) var(--ry, 50%)); }
+  to { clip-path: circle(150% at var(--rx, 50%) var(--ry, 50%)); }
 }
 
 body.light {
@@ -91,7 +112,7 @@ body.light .room-desc { color: #666666; }
   padding: 12px 28px;
   background: #ededed;
   color: #000000;
-  border: none;
+  border: 1px solid transparent;
   border-radius: 8px;
   font-size: 1rem;
   font-weight: 500;
@@ -191,6 +212,7 @@ body.light .btn-join:hover {
   max-width: 240px;
   padding: 14px 32px;
   font-size: 1.05rem;
+  margin-top: 0;
 }
 
 body.light .btn-back {
@@ -233,7 +255,7 @@ body.light .divider { color: #999999; }
   top: 50%;
   width: 80px;
   height: 1px;
-  background: #333333;
+  background: #555555;
 }
 
 body.light .divider::before,
@@ -252,7 +274,7 @@ body.light .divider::after {
 .local-play {
   margin-top: 24px;
   padding-top: 24px;
-  border-top: 1px solid #222222;
+  border-top: 1px solid #555555;
 }
 
 body.light .local-play {
@@ -332,6 +354,7 @@ body.light .btn-local:hover {
   width: 100%;
   max-width: 240px;
   margin-bottom: 10px;
+  margin-top: 0;
 }
 
 body.light .btn-rules {
@@ -358,12 +381,100 @@ body.light .btn-rules:hover {
 .other-games {
   margin-top: 24px;
   padding-top: 24px;
-  border-top: 1px solid #222222;
+  border-top: 1px solid #555555;
 }
 
 body.light .other-games {
   border-top-color: #dddddd;
 }
+
+/* ===== AI 难度选择界面 ===== */
+.difficulty-section {
+  text-align: center;
+  padding: 40px 20px;
+}
+
+.difficulty-section h2 {
+  color: #ededed;
+  margin-bottom: 10px;
+  font-size: 1.6rem;
+  font-weight: 600;
+}
+
+body.light .difficulty-section h2 { color: #1a1a1a; }
+
+.difficulty-desc {
+  color: #888888;
+  margin-bottom: 30px;
+  font-size: 1rem;
+}
+
+body.light .difficulty-desc { color: #666666; }
+
+.difficulty-options {
+  display: flex;
+  gap: 16px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.btn-difficulty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 24px 20px;
+  min-width: 140px;
+  background: #111111;
+  border: 1px solid #333333;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+body.light .btn-difficulty {
+  background: #ffffff;
+  border-color: #e0e0e0;
+}
+
+.btn-difficulty:hover {
+  border-color: #666666;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 16px rgba(255, 255, 255, 0.08);
+}
+
+body.light .btn-difficulty:hover {
+  border-color: #cccccc;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+}
+
+.difficulty-icon {
+  font-size: 2rem;
+  margin-bottom: 10px;
+}
+
+.difficulty-name {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #ededed;
+  margin-bottom: 4px;
+}
+
+body.light .difficulty-name { color: #1a1a1a; }
+
+.difficulty-hint {
+  font-size: 0.8rem;
+  color: #888888;
+}
+
+body.light .difficulty-hint { color: #666666; }
+
+.btn-difficulty-easy:hover { border-color: #4caf50; }
+.btn-difficulty-medium:hover { border-color: #ff9800; }
+.btn-difficulty-hard:hover { border-color: #f44336; }
+
+body.light .btn-difficulty-easy:hover { border-color: #4caf50; }
+body.light .btn-difficulty-medium:hover { border-color: #ff9800; }
+body.light .btn-difficulty-hard:hover { border-color: #f44336; }
 
 /* ===== 加入房间界面 ===== */
 .back-button {
@@ -1001,11 +1112,6 @@ body.light .wall-count { color: #666666; }
   text-align: center;
 }
 
-body.light .current-turn {
-  background: #1a1a1a;
-  color: #ffffff;
-}
-
 canvas {
   display: block;
   margin: 0 auto 16px;
@@ -1520,6 +1626,30 @@ body.light .theme-toggle .icon-moon { display: none; }
   .btn-ai, .btn-local {
     max-width: 100%;
     min-height: 50px;
+  }
+
+  .difficulty-options {
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .btn-difficulty {
+    width: 100%;
+    max-width: 240px;
+    min-height: 50px;
+    flex-direction: row;
+    gap: 12px;
+    padding: 16px 20px;
+  }
+
+  .difficulty-icon {
+    margin-bottom: 0;
+    font-size: 1.6rem;
+  }
+
+  .difficulty-name,
+  .difficulty-hint {
+    text-align: left;
   }
 
   .btn-undo {

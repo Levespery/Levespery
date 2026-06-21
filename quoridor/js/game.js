@@ -80,18 +80,6 @@ function getStartRow(playerIndex) {
   return gameState.positionsSwapped ? (8 - normalStart) : normalStart;
 }
 
-// 初始化游戏
-function init() {
-  canvas = document.getElementById('gameCanvas');
-  ctx = canvas.getContext('2d');
-
-  canvas.addEventListener('click', handleClick);
-  canvas.addEventListener('mousemove', handleMouseMove);
-
-  updateModeHint();
-  render();
-}
-
 // 检测是否是移动设备
 function isMobileDevice() {
   return window.innerWidth <= 768 || 'ontouchstart' in window;
@@ -173,7 +161,6 @@ function handleMoveClick(x, y) {
 
   if (visRow < 0 || visRow >= GRID_SIZE || visCol < 0 || visCol >= GRID_SIZE) return;
 
-  // 将视觉坐标转换为逻辑坐标
   const row = logicalRow(visRow);
   const col = logicalCol(visCol);
 
@@ -182,10 +169,10 @@ function handleMoveClick(x, y) {
   const dc = col - player.col;
   const distance = Math.abs(dr) + Math.abs(dc);
 
-  if (distance < 1 || distance > 2) return;
-
   const opponentIndex = gameState.currentPlayer === 0 ? 1 : 0;
   const opponent = gameState.players[opponentIndex];
+
+  if (distance < 1 || distance > 2) return;
 
   // 不允许移动到对手所在的格子
   if (row === opponent.row && col === opponent.col) return;
@@ -196,14 +183,48 @@ function handleMoveClick(x, y) {
 
   if (distance === 1) {
     if (isBlocked(player.row, player.col, row, col)) return;
-  } else if ((absDr === 2 && absDc === 0) || (absDr === 0 && absDc === 2)) {
-    // 直线跳跃
+  } else if (distance === 2) {
+    // 先判断对手是否在直线跳的中间位置
     const midRow = player.row + dr / 2;
     const midCol = player.col + dc / 2;
-    if (midRow !== opponent.row || midCol !== opponent.col) return;
-    if (isBlocked(player.row, player.col, midRow, midCol)) return;
-    if (isBlocked(midRow, midCol, row, col)) return;
-    isJump = true;
+    const opponentAtMid = (midRow === opponent.row && midCol === opponent.col);
+
+    if (opponentAtMid && (absDr === 2 || absDc === 2)) {
+      // 直线跳：对手在中间，检查背后有墙否
+      if (isBlocked(player.row, player.col, midRow, midCol)) return;
+      if (isBlocked(midRow, midCol, row, col)) return;
+      isJump = true;
+    } else if (absDr === 1 && absDc === 1) {
+      // 斜跳：对手相邻，且直线跳被墙挡住
+      const oppH = (opponent.row === player.row && opponent.col === col);
+      const oppV = (opponent.col === player.col && opponent.row === row);
+      if (!oppH && !oppV) return;
+      // 检查从对手到直线跳目标是否有墙或出界
+      let straightBlocked = false;
+      if (oppH) {
+        const jumpCol = col + (col - player.col);
+        if (jumpCol < 0 || jumpCol >= GRID_SIZE) {
+          straightBlocked = true;
+        } else {
+          straightBlocked = isBlocked(opponent.row, opponent.col, opponent.row, jumpCol);
+        }
+      } else {
+        const jumpRow = row + (row - player.row);
+        if (jumpRow < 0 || jumpRow >= GRID_SIZE) {
+          straightBlocked = true;
+        } else {
+          straightBlocked = isBlocked(opponent.row, opponent.col, jumpRow, opponent.col);
+        }
+      }
+      if (!straightBlocked) return;
+      // 检查目标位置是否与对手相邻且可达
+      const toOpponentDist = Math.abs(row - opponent.row) + Math.abs(col - opponent.col);
+      if (toOpponentDist !== 1) return;
+      if (isBlocked(opponent.row, opponent.col, row, col)) return;
+      isJump = true;
+    } else {
+      return;
+    }
   } else {
     return;
   }
@@ -366,29 +387,16 @@ function getWallFromPosition(x, y, threshold, orientation) {
 // 检查墙壁是否重叠
 function isWallOverlapping(newWall) {
   for (const wall of gameState.walls) {
-    // 完全相同的位置和方向
-    if (wall.row === newWall.row && wall.col === newWall.col && wall.orientation === newWall.orientation) {
-      return true;
-    }
+    // 同一中心点 → 重叠（不管方向）
+    if (wall.row === newWall.row && wall.col === newWall.col) return true;
 
-    // 同方向相邻墙壁重叠
+    // 同方向，范围有交集 → 重叠
     if (wall.orientation === newWall.orientation) {
       if (wall.orientation === 'h') {
-        // 水平墙：检查相邻列
-        if (wall.row === newWall.row && Math.abs(wall.col - newWall.col) === 1) {
-          return true;
-        }
+        if (wall.row === newWall.row && wall.col <= newWall.col + 1 && newWall.col <= wall.col + 1) return true;
       } else {
-        // 垂直墙：检查相邻行
-        if (wall.col === newWall.col && Math.abs(wall.row - newWall.row) === 1) {
-          return true;
-        }
+        if (wall.col === newWall.col && wall.row <= newWall.row + 1 && newWall.row <= wall.row + 1) return true;
       }
-    }
-
-    // 不同方向交叉重叠
-    if (wall.orientation !== newWall.orientation) {
-      if (wall.row === newWall.row && wall.col === newWall.col) return true;
     }
   }
   return false;
@@ -433,10 +441,12 @@ function wouldBlockCompletely(wall) {
   return !canP1Reach || !canP2Reach;
 }
 
-// 检查玩家是否能到达目标（BFS）
+// 检查玩家是否能到达目标（BFS，考虑跳跃）
 function canReachGoal(playerIndex) {
   const player = gameState.players[playerIndex];
   const goalRow = getGoalRow(playerIndex);
+  const opponentIndex = playerIndex === 0 ? 1 : 0;
+  const opponent = gameState.players[opponentIndex];
 
   const visited = new Set();
   const queue = [{ row: player.row, col: player.col }];
@@ -455,9 +465,49 @@ function canReachGoal(playerIndex) {
       const key = `${newRow},${newCol}`;
 
       if (newRow >= 0 && newRow < GRID_SIZE && newCol >= 0 && newCol < GRID_SIZE && !visited.has(key)) {
+        // 检查是否被墙阻挡
         if (!isBlocked(row, col, newRow, newCol)) {
-          visited.add(key);
-          queue.push({ row: newRow, col: newCol });
+          // 检查是否有对手在目标位置
+          if (newRow === opponent.row && newCol === opponent.col) {
+            // 尝试跳跃
+            const jumpRow = row + dr * 2;
+            const jumpCol = col + dc * 2;
+            const jumpKey = `${jumpRow},${jumpCol}`;
+            
+            // 直线跳跃
+            if (jumpRow >= 0 && jumpRow < GRID_SIZE && jumpCol >= 0 && jumpCol < GRID_SIZE && !visited.has(jumpKey)) {
+              if (!isBlocked(row, col, newRow, newCol) && !isBlocked(newRow, newCol, jumpRow, jumpCol)) {
+                visited.add(jumpKey);
+                queue.push({ row: jumpRow, col: jumpCol });
+              }
+            }
+            
+            // 侧面跳跃
+            const sideOffsets = [[-1, 0], [1, 0], [0, -1], [0, 1]];
+            for (const [sdr, sdc] of sideOffsets) {
+              const sideRow = opponent.row + sdr;
+              const sideCol = opponent.col + sdc;
+              const sideKey = `${sideRow},${sideCol}`;
+              
+              // 侧面格子必须在棋盘范围内
+              if (sideRow < 0 || sideRow >= GRID_SIZE || sideCol < 0 || sideCol >= GRID_SIZE) continue;
+              // 侧面格子不能是当前位置
+              if (sideRow === row && sideCol === col) continue;
+              // 侧面格子不能是对手位置
+              if (sideRow === opponent.row && sideCol === opponent.col) continue;
+              // 从对手位置到侧面格子不能有墙
+              if (isBlocked(opponent.row, opponent.col, sideRow, sideCol)) continue;
+              // 侧面格子必须未访问
+              if (visited.has(sideKey)) continue;
+              
+              visited.add(sideKey);
+              queue.push({ row: sideRow, col: sideCol });
+            }
+          } else {
+            // 普通移动
+            visited.add(key);
+            queue.push({ row: newRow, col: newCol });
+          }
         }
       }
     }
@@ -605,7 +655,16 @@ function undoMove() {
       gameState.players[1].row = aiMove.data.fromRow;
       gameState.players[1].col = aiMove.data.fromCol;
     } else if (aiMove.type === 'wall') {
-      gameState.walls.pop();
+      // 根据历史记录精确移除墙壁
+      const wallToRemove = aiMove.data.wall;
+      const wallIndex = gameState.walls.findIndex(w => 
+        w.row === wallToRemove.row && 
+        w.col === wallToRemove.col && 
+        w.orientation === wallToRemove.orientation
+      );
+      if (wallIndex !== -1) {
+        gameState.walls.splice(wallIndex, 1);
+      }
       gameState.players[1].walls++;
     }
 
@@ -615,7 +674,16 @@ function undoMove() {
       gameState.players[0].row = playerMove.data.fromRow;
       gameState.players[0].col = playerMove.data.fromCol;
     } else if (playerMove.type === 'wall') {
-      gameState.walls.pop();
+      // 根据历史记录精确移除墙壁
+      const wallToRemove = playerMove.data.wall;
+      const wallIndex = gameState.walls.findIndex(w => 
+        w.row === wallToRemove.row && 
+        w.col === wallToRemove.col && 
+        w.orientation === wallToRemove.orientation
+      );
+      if (wallIndex !== -1) {
+        gameState.walls.splice(wallIndex, 1);
+      }
       gameState.players[0].walls++;
     }
 
@@ -629,7 +697,16 @@ function undoMove() {
       gameState.players[playerIndex].row = lastMove.data.fromRow;
       gameState.players[playerIndex].col = lastMove.data.fromCol;
     } else if (lastMove.type === 'wall') {
-      gameState.walls.pop();
+      // 根据历史记录精确移除墙壁
+      const wallToRemove = lastMove.data.wall;
+      const wallIndex = gameState.walls.findIndex(w => 
+        w.row === wallToRemove.row && 
+        w.col === wallToRemove.col && 
+        w.orientation === wallToRemove.orientation
+      );
+      if (wallIndex !== -1) {
+        gameState.walls.splice(wallIndex, 1);
+      }
       gameState.players[playerIndex].walls++;
     }
 
@@ -836,14 +913,37 @@ function drawValidMoves() {
     if (newRow >= 0 && newRow < GRID_SIZE && newCol >= 0 && newCol < GRID_SIZE) {
       if (!isBlocked(player.row, player.col, newRow, newCol)) {
         if (newRow === opponent.row && newCol === opponent.col) {
-          // 尝试跳跃
+          // 直线跳跃
           const jumpRow = newRow + dr;
           const jumpCol = newCol + dc;
+          let straightBlocked = false;
 
           if (jumpRow >= 0 && jumpRow < GRID_SIZE && jumpCol >= 0 && jumpCol < GRID_SIZE) {
             if (!isBlocked(newRow, newCol, jumpRow, jumpCol)) {
               const x = GRID_OFFSET + visualCol(jumpCol) * CELL_SIZE + CELL_SIZE / 2;
               const y = GRID_OFFSET + visualRow(jumpRow) * CELL_SIZE + CELL_SIZE / 2;
+              ctx.beginPath();
+              ctx.arc(x, y, 8, 0, Math.PI * 2);
+              ctx.fillStyle = COLORS.validMove;
+              ctx.fill();
+            } else {
+              straightBlocked = true;
+            }
+          } else {
+            straightBlocked = true;
+          }
+
+          // 只有直线跳被墙挡住时，才显示斜跳目标
+          if (straightBlocked) {
+            const sideOffsets = [[-1, 0], [1, 0], [0, -1], [0, 1]];
+            for (const [sdr, sdc] of sideOffsets) {
+              const sideRow = opponent.row + sdr;
+              const sideCol = opponent.col + sdc;
+              if (sideRow < 0 || sideRow >= GRID_SIZE || sideCol < 0 || sideCol >= GRID_SIZE) continue;
+              if (sideRow === player.row && sideCol === player.col) continue;
+              if (isBlocked(opponent.row, opponent.col, sideRow, sideCol)) continue;
+              const x = GRID_OFFSET + visualCol(sideCol) * CELL_SIZE + CELL_SIZE / 2;
+              const y = GRID_OFFSET + visualRow(sideRow) * CELL_SIZE + CELL_SIZE / 2;
               ctx.beginPath();
               ctx.arc(x, y, 8, 0, Math.PI * 2);
               ctx.fillStyle = COLORS.validMove;
